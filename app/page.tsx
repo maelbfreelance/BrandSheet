@@ -1,11 +1,26 @@
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "BrandSheet — Vos documents aux couleurs de vos clients",
-  description: "Collez l'URL de votre client. BrandSheet génère vos factures, CGV et mails brandés en 30 secondes.",
-};
+'use client'
+import React from 'react'
 
 export default function Home() {
+  const [email, setEmail] = React.useState('')
+  const [status, setStatus] = React.useState('')
+
+  const handleSubmit = async () => {
+    if (!email) return
+    const res = await fetch('/api/waitlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    })
+    if (res.ok) {
+      setStatus('success')
+      setEmail('')
+    } else {
+      const data = await res.json()
+      setStatus(data.error || 'error')
+    }
+  }
+
   return (
     <>
       <style>{`
@@ -32,6 +47,7 @@ export default function Home() {
         .bs-input::placeholder{color:#1E3050;font-style:italic;}
         .bs-btn{background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;padding:15px 28px;border-radius:10px;font-size:16px;font-weight:500;font-family:'Cormorant Garamond',serif;border:none;cursor:pointer;}
         .bs-hint{font-size:14px;color:#1E3050;margin-top:14px;font-style:italic;}
+        .bs-success{font-size:15px;color:#4F8EF7;margin-top:14px;font-style:italic;}
         .bs-mockup-wrap{max-width:680px;margin:60px auto 0;padding:0 24px;}
         .bs-mockup{background:#070F22;border:1px solid #0F2040;border-radius:18px;padding:22px;}
         .bs-mock-bar{display:flex;gap:7px;margin-bottom:18px;}
@@ -75,7 +91,6 @@ export default function Home() {
         .bs-final-p{color:#4A6280;font-size:19px;margin-bottom:36px;font-style:italic;font-weight:300;}
         .bs-footer{padding:28px 44px;border-top:1px solid #0A1428;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
         .bs-footer-copy{font-size:14px;color:#1E3050;font-style:italic;}
-
         @media (max-width:768px){
           .bs-nav{padding:16px 20px;}
           .bs-nav-desktop{display:none;}
@@ -102,7 +117,6 @@ export default function Home() {
           .bs-final-p{font-size:17px;}
           .bs-footer{flex-direction:column;text-align:center;padding:24px 20px;}
         }
-
         @media (max-width:1024px) and (min-width:769px){
           .bs-nav{padding:20px 24px;}
           .bs-h1{font-size:48px;}
@@ -131,9 +145,20 @@ export default function Home() {
         <div className="bs-h1-ghost">Instantanément.</div>
         <p className="bs-sub">Votre client voit <strong>sa propre identité</strong> sur votre facture.<br />Il se souvient de vous. C&apos;est ça, la différence.</p>
         <div className="bs-cta-row">
-          <input className="bs-input" type="email" placeholder="votre@email.com" />
-          <button className="bs-btn">Commencer gratuitement →</button>
+          <input
+            className="bs-input"
+            type="email"
+            placeholder="votre@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+          />
+          <button className="bs-btn" onClick={handleSubmit}>
+            {status === 'success' ? '✅ Inscrit !' : 'Commencer gratuitement →'}
+          </button>
         </div>
+        {status === 'success' && <p className="bs-success">Bienvenue ! On vous contacte très vite 🎉</p>}
+        {status === 'Email déjà inscrit' && <p className="bs-success" style={{color:'#F7954F'}}>Cet email est déjà inscrit !</p>}
         <p className="bs-hint">Aucune carte bancaire · Gratuit pour toujours sur 2 contacts</p>
       </div>
 
@@ -257,9 +282,19 @@ export default function Home() {
         <h2 className="bs-final-h">Votre prochain client<br />mérite des documents<br /><em>à sa hauteur.</em></h2>
         <p className="bs-final-p">Rejoignez les freelances qui impressionnent leurs clients dès la première facture.</p>
         <div className="bs-cta-row">
-          <input className="bs-input" type="email" placeholder="votre@email.com" />
-          <button className="bs-btn">Commencer gratuitement →</button>
+          <input
+            className="bs-input"
+            type="email"
+            placeholder="votre@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+          />
+          <button className="bs-btn" onClick={handleSubmit}>
+            {status === 'success' ? '✅ Inscrit !' : 'Commencer gratuitement →'}
+          </button>
         </div>
+        {status === 'success' && <p className="bs-success">Bienvenue ! On vous contacte très vite 🎉</p>}
         <p className="bs-hint">Gratuit · Sans CB · 2 contacts à vie</p>
       </div>
 
@@ -268,5 +303,5 @@ export default function Home() {
         <div className="bs-footer-copy">© 2025 BrandSheet · CGU · Mentions légales · Contact</div>
       </footer>
     </>
-  );
+  )
 }
