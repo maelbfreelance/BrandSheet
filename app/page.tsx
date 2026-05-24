@@ -1,65 +1,233 @@
-import Image from "next/image";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "BrandSheet — Vos documents aux couleurs de vos clients",
+  description: "Collez l'URL de votre client. BrandSheet génère vos factures, CGV et mails brandés en 30 secondes.",
+};
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Cormorant Garamond',serif;background:#050B18;color:#F0F4FF;}
+        .bs-nav{display:flex;justify-content:space-between;align-items:center;padding:22px 44px;border-bottom:1px solid #0F1E3A;}
+        .bs-logo{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;background:linear-gradient(135deg,#4F8EF7,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+        .bs-nav-links{display:flex;gap:32px;align-items:center;}
+        .bs-nav-links a{color:#4A6280;font-size:15px;font-weight:400;text-decoration:none;font-family:'Cormorant Garamond',serif;font-style:italic;transition:color .2s;}
+        .bs-nav-links a:hover{color:#F0F4FF;}
+        .bs-btn-nav{background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff!important;padding:11px 24px;border-radius:8px;font-size:14px;font-weight:500;font-style:normal;}
+        .bs-hero{text-align:center;padding:100px 40px 60px;max-width:820px;margin:0 auto;}
+        .bs-badge{display:inline-flex;align-items:center;gap:9px;background:#070F22;border:1px solid #0F2040;border-radius:30px;padding:8px 18px;font-size:13px;color:#4A6280;margin-bottom:36px;font-style:italic;}
+        .bs-dot{width:6px;height:6px;border-radius:50%;background:#4F8EF7;display:inline-block;}
+        .bs-h1{font-family:'Playfair Display',serif;font-size:64px;font-weight:700;line-height:1.08;margin-bottom:10px;letter-spacing:-1.5px;}
+        .bs-h1 em{font-style:italic;background:linear-gradient(135deg,#4F8EF7 30%,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+        .bs-h1-ghost{font-family:'Playfair Display',serif;font-size:64px;font-style:italic;font-weight:400;color:#0D1E38;line-height:1.08;margin-bottom:32px;}
+        .bs-sub{font-size:20px;color:#4A6280;line-height:1.75;max-width:500px;margin:0 auto 44px;font-weight:300;font-style:italic;}
+        .bs-sub strong{font-style:normal;font-weight:500;color:#6B84AA;}
+        .bs-cta-row{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;}
+        .bs-input{background:#070F22;border:1px solid #0F2040;border-radius:10px;padding:15px 20px;font-size:15px;font-family:'Cormorant Garamond',serif;color:#F0F4FF;width:260px;outline:none;}
+        .bs-input::placeholder{color:#1E3050;font-style:italic;}
+        .bs-btn{background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;padding:15px 28px;border-radius:10px;font-size:16px;font-weight:500;font-family:'Cormorant Garamond',serif;border:none;cursor:pointer;}
+        .bs-hint{font-size:14px;color:#1E3050;margin-top:14px;font-style:italic;}
+        .bs-mockup-wrap{max-width:680px;margin:60px auto 0;padding:0 40px;}
+        .bs-mockup{background:#070F22;border:1px solid #0F2040;border-radius:18px;padding:22px;}
+        .bs-mock-bar{display:flex;gap:7px;margin-bottom:18px;}
+        .bs-mock-dot{width:10px;height:10px;border-radius:50%;}
+        .bs-url-bar{background:#050B18;border:1px solid #0F1E3A;border-radius:6px;padding:7px 14px;font-size:13px;color:#1E3050;margin-bottom:18px;font-style:italic;}
+        .bs-doc-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+        .bs-doc{background:#050B18;border:1px solid #0F1E3A;border-radius:10px;padding:14px;}
+        .bs-doc-accent{height:5px;border-radius:3px;margin-bottom:12px;}
+        .bs-doc-tag{font-size:11px;font-style:italic;margin-bottom:10px;}
+        .bs-line{height:4px;background:#0D1B35;border-radius:2px;margin-bottom:7px;}
+        .bs-line-s{width:55%;height:4px;background:#0D1B35;border-radius:2px;margin-bottom:7px;}
+        .bs-line-m{width:75%;height:4px;background:#0D1B35;border-radius:2px;margin-bottom:7px;}
+        .bs-sep{height:1px;background:#0A1428;max-width:1000px;margin:0 auto;}
+        .bs-how{padding:90px 44px;max-width:1000px;margin:0 auto;}
+        .bs-eyebrow{font-size:13px;font-weight:300;letter-spacing:3px;text-transform:uppercase;color:#4F8EF7;margin-bottom:16px;font-style:italic;}
+        .bs-section-h{font-family:'Playfair Display',serif;font-size:42px;font-weight:700;line-height:1.15;margin-bottom:14px;}
+        .bs-section-h em{font-style:italic;color:#1E3A5F;}
+        .bs-section-p{color:#4A6280;font-size:18px;line-height:1.8;max-width:440px;font-weight:300;font-style:italic;}
+        .bs-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:50px;}
+        .bs-step{background:#070F22;border:1px solid #0F2040;border-radius:16px;padding:30px 26px;}
+        .bs-step-n{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;font-style:italic;background:linear-gradient(135deg,#4F8EF7,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:18px;line-height:1;}
+        .bs-step-h{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;margin-bottom:10px;}
+        .bs-step-p{color:#4A6280;font-size:16px;line-height:1.8;font-weight:300;font-style:italic;}
+        .bs-pricing{padding:90px 44px;max-width:1000px;margin:0 auto;text-align:center;}
+        .bs-plans{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:50px;text-align:left;}
+        .bs-plan{background:#070F22;border:1px solid #0F2040;border-radius:16px;padding:28px 22px;position:relative;}
+        .bs-plan-hot{border:1.5px solid #4F8EF7;}
+        .bs-plan-pop{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#4F8EF7,#7C3AED);font-size:11px;font-style:italic;font-family:'Cormorant Garamond',serif;color:#fff;padding:5px 16px;border-radius:20px;white-space:nowrap;}
+        .bs-plan-tier{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:12px;}
+        .bs-plan-price{font-family:'Playfair Display',serif;font-size:40px;font-weight:700;line-height:1;margin-bottom:4px;}
+        .bs-plan-mo{font-size:15px;color:#4A6280;font-style:italic;}
+        .bs-plan-contacts{font-size:15px;font-style:italic;color:#4F8EF7;margin:14px 0;padding:12px 0;border-top:1px solid #0F1E3A;border-bottom:1px solid #0F1E3A;}
+        .bs-feats{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:24px;padding:0;}
+        .bs-feats li{font-size:15px;color:#4A6280;display:flex;gap:8px;align-items:flex-start;font-style:italic;}
+        .bs-plan-cta{width:100%;padding:13px;border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:500;font-style:italic;cursor:pointer;border:none;}
+        .bs-cta-outline{background:transparent;border:1px solid #0F2040;color:#F0F4FF;}
+        .bs-cta-filled{background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;}
+        .bs-final{background:#070F22;border-top:1px solid #0F1E3A;padding:90px 44px;text-align:center;}
+        .bs-final-h{font-family:'Playfair Display',serif;font-size:48px;font-weight:700;line-height:1.15;margin-bottom:16px;}
+        .bs-final-h em{font-style:italic;background:linear-gradient(135deg,#4F8EF7,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+        .bs-final-p{color:#4A6280;font-size:19px;margin-bottom:36px;font-style:italic;font-weight:300;}
+        .bs-footer{padding:28px 44px;border-top:1px solid #0A1428;display:flex;justify-content:space-between;align-items:center;}
+        .bs-footer-copy{font-size:14px;color:#1E3050;font-style:italic;}
+      `}</style>
+
+      <nav className="bs-nav">
+        <div className="bs-logo">BrandSheet</div>
+        <div className="bs-nav-links">
+          <a href="#">Fonctionnement</a>
+          <a href="#">Tarifs</a>
+          <a href="#">Blog</a>
+          <a href="#" className="bs-btn-nav">Démarrer gratuitement</a>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </nav>
+
+      <div className="bs-hero">
+        <div className="bs-badge"><span className="bs-dot"></span>Bêta ouverte · 2 contacts gratuits à vie</div>
+        <h1 className="bs-h1">Vos documents,<br /><em>à leur image.</em></h1>
+        <div className="bs-h1-ghost">Instantanément.</div>
+        <p className="bs-sub">Votre client voit <strong>sa propre identité</strong> sur votre facture.<br />Il se souvient de vous. C&apos;est ça, la différence.</p>
+        <div className="bs-cta-row">
+          <input className="bs-input" type="email" placeholder="votre@email.com" />
+          <button className="bs-btn">Commencer gratuitement →</button>
         </div>
-      </main>
-    </div>
+        <p className="bs-hint">Aucune carte bancaire · Gratuit pour toujours sur 2 contacts</p>
+      </div>
+
+      <div className="bs-mockup-wrap">
+        <div className="bs-mockup">
+          <div className="bs-mock-bar">
+            <div className="bs-mock-dot" style={{background:'#FF5F57'}}></div>
+            <div className="bs-mock-dot" style={{background:'#FFBD2E'}}></div>
+            <div className="bs-mock-dot" style={{background:'#28C840'}}></div>
+          </div>
+          <div className="bs-url-bar">🔗 brandsheet.fr/analyse → acme-studio.com</div>
+          <div className="bs-doc-row">
+            <div className="bs-doc">
+              <div className="bs-doc-accent" style={{background:'linear-gradient(90deg,#4F8EF7,#7C3AED)'}}></div>
+              <div className="bs-doc-tag" style={{color:'#4F8EF7'}}>Facture</div>
+              <div className="bs-line"></div><div className="bs-line-m"></div><div className="bs-line-s"></div><div className="bs-line"></div>
+            </div>
+            <div className="bs-doc">
+              <div className="bs-doc-accent" style={{background:'linear-gradient(90deg,#7C3AED,#C084FC)'}}></div>
+              <div className="bs-doc-tag" style={{color:'#A855F7'}}>Relance</div>
+              <div className="bs-line-m"></div><div className="bs-line"></div><div className="bs-line-s"></div><div className="bs-line-m"></div>
+            </div>
+            <div className="bs-doc">
+              <div className="bs-doc-accent" style={{background:'linear-gradient(90deg,#06B6D4,#4F8EF7)'}}></div>
+              <div className="bs-doc-tag" style={{color:'#06B6D4'}}>CGV</div>
+              <div className="bs-line-s"></div><div className="bs-line"></div><div className="bs-line-m"></div><div className="bs-line"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bs-sep" style={{marginTop:'80px'}}></div>
+
+      <div className="bs-how">
+        <div className="bs-eyebrow">Comment ça marche</div>
+        <h2 className="bs-section-h">Trois étapes.<br /><em>Zéro friction.</em></h2>
+        <p className="bs-section-p">Pas de formation, pas de configuration. Votre premier document brandé est prêt en moins d&apos;une minute.</p>
+        <div className="bs-steps">
+          <div className="bs-step">
+            <div className="bs-step-n">01</div>
+            <div className="bs-step-h">Collez l&apos;URL client</div>
+            <p className="bs-step-p">Entrez le site web de votre client. BrandSheet récupère son identité visuelle — couleurs, typographies, ton éditorial.</p>
+          </div>
+          <div className="bs-step">
+            <div className="bs-step-n">02</div>
+            <div className="bs-step-h">L&apos;IA analyse tout</div>
+            <p className="bs-step-p">Palette, typographie, secteur, ton — tout est détecté et structuré, prêt à être appliqué sur chaque document.</p>
+          </div>
+          <div className="bs-step">
+            <div className="bs-step-n">03</div>
+            <div className="bs-step-h">Téléchargez et envoyez</div>
+            <p className="bs-step-p">Factures, CGV, relances, remerciements — générés, brandés, prêts à envoyer. En PDF ou par email direct.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bs-sep"></div>
+
+      <div className="bs-pricing">
+        <div className="bs-eyebrow">Tarifs</div>
+        <h2 className="bs-section-h" style={{textAlign:'center'}}>Simple.<br /><em>Transparent.</em></h2>
+        <p className="bs-section-p" style={{margin:'0 auto',textAlign:'center'}}>Commencez gratuitement. Évoluez à votre rythme.</p>
+        <div className="bs-plans">
+          <div className="bs-plan">
+            <div className="bs-plan-tier">Starter</div>
+            <div className="bs-plan-price">0€</div>
+            <div className="bs-plan-mo">/mois · à vie</div>
+            <div className="bs-plan-contacts">2 contacts inclus</div>
+            <ul className="bs-feats">
+              <li>Analyse de marque IA</li>
+              <li>Factures brandées PDF</li>
+              <li>Mails de relance</li>
+              <li>Remerciements</li>
+            </ul>
+            <button className="bs-plan-cta bs-cta-outline">Commencer</button>
+          </div>
+          <div className="bs-plan">
+            <div className="bs-plan-tier">Solo</div>
+            <div className="bs-plan-price">7,99€</div>
+            <div className="bs-plan-mo">/mois</div>
+            <div className="bs-plan-contacts">15 contacts</div>
+            <ul className="bs-feats">
+              <li>Tout le Starter</li>
+              <li>CGV générées</li>
+              <li>Page SAV brandée</li>
+              <li>Devis professionnels</li>
+            </ul>
+            <button className="bs-plan-cta bs-cta-outline">Choisir Solo</button>
+          </div>
+          <div className="bs-plan bs-plan-hot">
+            <div className="bs-plan-pop">✦ Plus populaire</div>
+            <div className="bs-plan-tier">Studio</div>
+            <div className="bs-plan-price">14,99€</div>
+            <div className="bs-plan-mo">/mois</div>
+            <div className="bs-plan-contacts">75 contacts</div>
+            <ul className="bs-feats">
+              <li>Tout le Solo</li>
+              <li>Relances automatiques</li>
+              <li>Domaine personnalisé</li>
+              <li>Analytics documents</li>
+            </ul>
+            <button className="bs-plan-cta bs-cta-filled">Choisir Studio</button>
+          </div>
+          <div className="bs-plan">
+            <div className="bs-plan-tier">Agency</div>
+            <div className="bs-plan-price">34,99€</div>
+            <div className="bs-plan-mo">/mois</div>
+            <div className="bs-plan-contacts">Contacts illimités</div>
+            <ul className="bs-feats">
+              <li>Tout le Studio</li>
+              <li>Multi-utilisateurs</li>
+              <li>White label complet</li>
+              <li>Accès API</li>
+            </ul>
+            <button className="bs-plan-cta bs-cta-outline">Choisir Agency</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bs-final">
+        <h2 className="bs-final-h">Votre prochain client<br />mérite des documents<br /><em>à sa hauteur.</em></h2>
+        <p className="bs-final-p">Rejoignez les freelances qui impressionnent leurs clients dès la première facture.</p>
+        <div className="bs-cta-row">
+          <input className="bs-input" type="email" placeholder="votre@email.com" />
+          <button className="bs-btn">Commencer gratuitement →</button>
+        </div>
+        <p className="bs-hint">Gratuit · Sans CB · 2 contacts à vie</p>
+      </div>
+
+      <footer className="bs-footer">
+        <div className="bs-logo" style={{fontSize:'16px'}}>BrandSheet</div>
+        <div className="bs-footer-copy">© 2025 BrandSheet · CGU · Mentions légales · Contact</div>
+      </footer>
+    </>
   );
 }
