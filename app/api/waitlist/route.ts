@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { Resend } from 'resend'
 
-const resend = new Resend('ta_clé_resend_ici')
+const resend = new Resend('re_DjxivNpq_8MG7q6SAp5xjiQsZzRDKb7gW')
 
 export async function POST(req: Request) {
   const { email } = await req.json()
