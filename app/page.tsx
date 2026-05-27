@@ -16,7 +16,8 @@ export default function Home() {
       setStatus('success')
       setEmail('')
     } else {
-      const data = await res.json()
+      const text = await res.text()
+      const data = text ? JSON.parse(text) : {}
       setStatus(data.error || 'error')
     }
   }
@@ -134,9 +135,9 @@ export default function Home() {
           <a href="#">Fonctionnement</a>
           <a href="#">Tarifs</a>
           <a href="#">Blog</a>
-          <a href="#" className="bs-btn-nav">Démarrer gratuitement</a>
+          <a href="/login" className="bs-btn-nav">Démarrer gratuitement</a>
         </div>
-        <a href="#" className="bs-btn-nav-mobile">Commencer →</a>
+        <a href="/login" className="bs-btn-nav-mobile">Commencer →</a>
       </nav>
 
       <div className="bs-hero">
@@ -233,7 +234,7 @@ export default function Home() {
               <li>Mails de relance</li>
               <li>Remerciements</li>
             </ul>
-            <button className="bs-plan-cta bs-cta-outline">Commencer</button>
+            <button className="bs-plan-cta bs-cta-outline" onClick={() => window.location.href='/login'}>Commencer</button>
           </div>
           <div className="bs-plan">
             <div className="bs-plan-tier">Solo</div>
@@ -246,7 +247,7 @@ export default function Home() {
               <li>Page SAV brandée</li>
               <li>Devis professionnels</li>
             </ul>
-            <button className="bs-plan-cta bs-cta-outline">Choisir Solo</button>
+            <button className="bs-plan-cta bs-cta-outline" onClick={() => window.location.href='/login'}>Choisir Solo</button>
           </div>
           <div className="bs-plan bs-plan-hot">
             <div className="bs-plan-pop">✦ Plus populaire</div>
@@ -260,7 +261,7 @@ export default function Home() {
               <li>Domaine personnalisé</li>
               <li>Analytics documents</li>
             </ul>
-            <button className="bs-plan-cta bs-cta-filled">Choisir Studio</button>
+            <button className="bs-plan-cta bs-cta-filled" onClick={() => window.location.href='/login'}>Choisir Studio</button>
           </div>
           <div className="bs-plan">
             <div className="bs-plan-tier">Agency</div>
@@ -273,7 +274,7 @@ export default function Home() {
               <li>White label complet</li>
               <li>Accès API</li>
             </ul>
-            <button className="bs-plan-cta bs-cta-outline">Choisir Agency</button>
+            <button className="bs-plan-cta bs-cta-outline" onClick={() => window.location.href='/login'}>Choisir Agency</button>
           </div>
         </div>
       </div>

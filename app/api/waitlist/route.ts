@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function POST(req: Request) {
+  const resend = new Resend('re_DjxivNpq_8MG7q6SAp5xjiQsZzRDKb7gW')
+  
   const { email } = await req.json()
 
   if (!email || !email.includes('@')) {
