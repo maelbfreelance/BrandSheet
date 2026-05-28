@@ -1,119 +1,7 @@
+// v2
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { supabase } from '@/lib/supabase'
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!
-})
-
-const docPrompts: Record<string, (brand: any, order: any) => string> = {
-  bienvenue: (brand, order) => `Tu es un expert en communication professionnelle. Rédige un mail de bienvenue pour un nouveau client.
-
-Informations de la marque :
-- Nom : ${brand.brand_name || brand.name}
-- Secteur : ${brand.brand_sector}
-- Ton éditorial : ${brand.brand_tone}
-- Description : ${brand.brand_description || ''}
-- Valeurs : ${brand.brand_values?.join(', ') || ''}
-
-Commande/contexte : ${order || 'Nouveau client'}
-
-Rédige un mail de bienvenue chaleureux, professionnel, dans le ton de la marque. 
-Format : Objet du mail sur la première ligne, puis le corps du mail.
-Longueur : 150-200 mots maximum.`,
-
-  remerciement: (brand, order) => `Tu es un expert en communication professionnelle. Rédige un mail de remerciement post-prestation.
-
-Informations de la marque :
-- Nom : ${brand.brand_name || brand.name}
-- Secteur : ${brand.brand_sector}
-- Ton éditorial : ${brand.brand_tone}
-- Description : ${brand.brand_description || ''}
-
-Commande/contexte : ${order || 'Prestation terminée'}
-
-Rédige un mail de remerciement sincère et professionnel dans le ton de la marque.
-Format : Objet du mail sur la première ligne, puis le corps du mail.
-Longueur : 100-150 mots maximum.`,
-
-  avis: (brand, order) => `Tu es un expert en communication professionnelle. Rédige un mail de demande d'avis/témoignage.
-
-Informations de la marque :
-- Nom : ${brand.brand_name || brand.name}
-- Secteur : ${brand.brand_sector}
-- Ton éditorial : ${brand.brand_tone}
-
-Commande/contexte : ${order || 'Demande d\'avis'}
-
-Rédige un mail poli et engageant pour demander un avis client.
-Format : Objet du mail sur la première ligne, puis le corps du mail.
-Longueur : 100-130 mots maximum.`,
-
-  facture: (brand, order) => `Tu es un expert en gestion administrative. Génère le contenu d'une facture professionnelle.
-
-Informations de la marque :
-- Nom : ${brand.brand_name || brand.name}
-- Secteur : ${brand.brand_sector}
-- Email : ${brand.brand_email || ''}
-- Téléphone : ${brand.brand_phone || ''}
-- Adresse : ${brand.brand_address || ''}
-- Ton éditorial : ${brand.brand_tone}
-
-Commande/contexte : ${order || 'Prestation de services'}
-
-Génère une facture complète avec :
-- Numéro de facture (FAC-2025-001)
-- Date
-- Désignation des prestations
-- Montants HT/TVA/TTC
-- Conditions de paiement
-- Mentions légales adaptées au secteur
-
-Format clair et structuré.`,
-
-  devis: (brand, order) => `Tu es un expert en gestion administrative. Génère le contenu d'un devis professionnel.
-
-Informations de la marque :
-- Nom : ${brand.brand_name || brand.name}
-- Secteur : ${brand.brand_sector}
-- Email : ${brand.brand_email || ''}
-- Téléphone : ${brand.brand_phone || ''}
-- Adresse : ${brand.brand_address || ''}
-- Ton éditorial : ${brand.brand_tone}
-
-Commande/contexte : ${order || 'Prestation de services'}
-
-Génère un devis complet avec :
-- Numéro de devis (DEV-2025-001)
-- Date et durée de validité (30 jours)
-- Désignation détaillée des prestations
-- Montants HT/TVA/TTC
-- Conditions générales
-- Zone de signature
-
-Format clair et structuré.`,
-
-  cgv: (brand, order) => `Tu es un expert juridique. Génère des Conditions Générales de Vente adaptées.
-
-Informations de la marque :
-- Nom : ${brand.brand_name || brand.name}
-- Secteur : ${brand.brand_sector}
-- Email : ${brand.brand_email || ''}
-- Adresse : ${brand.brand_address || ''}
-
-Activité : ${order || brand.brand_sector}
-
-Génère des CGV complètes et conformes au droit français incluant :
-- Objet et champ d'application
-- Prix et modalités de paiement
-- Conditions de livraison/réalisation
-- Droit de rétractation
-- Responsabilités
-- Protection des données (RGPD)
-- Litiges et juridiction compétente
-
-DISCLAIMER : Ces CGV sont générées à titre indicatif et doivent être validées par un professionnel juridique.`
-}
 
 export async function POST(req: Request) {
   const { contactId, orderInfo } = await req.json()
@@ -121,6 +9,8 @@ export async function POST(req: Request) {
   if (!contactId) {
     return NextResponse.json({ error: 'contactId requis' }, { status: 400 })
   }
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
   try {
     const { data: contact } = await supabase
@@ -133,12 +23,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Contact introuvable' }, { status: 404 })
     }
 
-    const results: Record<string, string> = {}
-    const docTypes = Object.keys(docPrompts)
+    const b = contact
+    const o = orderInfo || 'Prestation de services'
+    const brandInfo = `Marque: ${b.brand_name || b.name} | Secteur: ${b.brand_sector} | Ton: ${b.brand_tone} | Email: ${b.brand_email || ''} | Tel: ${b.brand_phone || ''} | Adresse: ${b.brand_address || ''} | Description: ${b.brand_description || ''} | Valeurs: ${b.brand_values?.join(', ') || ''}`
 
-    for (const docType of docTypes) {
-      const prompt = docPrompts[docType](contact, orderInfo)
-      
+    const docPrompts: Record<string, string> = {
+      bienvenue: `Rédige un mail de bienvenue pour un nouveau client. ${brandInfo}. Contexte: ${o}. Format: Objet sur la 1ère ligne puis corps du mail. 150 mots max. Ton ${b.brand_tone}.`,
+      remerciement: `Rédige un mail de remerciement post-prestation. ${brandInfo}. Contexte: ${o}. Format: Objet sur la 1ère ligne puis corps. 120 mots max. Ton ${b.brand_tone}.`,
+      avis: `Rédige un mail de demande d'avis client. ${brandInfo}. Contexte: ${o}. Format: Objet sur la 1ère ligne puis corps. 100 mots max. Ton ${b.brand_tone}.`,
+      facture: `Génère le contenu d'une facture professionnelle. ${brandInfo}. Prestation: ${o}. Inclure: numéro FAC-2025-001, date, désignation, montants HT/TVA/TTC, conditions de paiement, mentions légales.`,
+      devis: `Génère un devis professionnel. ${brandInfo}. Prestation: ${o}. Inclure: numéro DEV-2025-001, date, validité 30j, désignation détaillée, montants HT/TVA/TTC, zone de signature.`,
+      cgv: `Génère des CGV conformes au droit français. ${brandInfo}. Activité: ${b.brand_sector}. Inclure: objet, prix/paiement, livraison, rétractation, responsabilités, RGPD, litiges. DISCLAIMER: à valider par un professionnel juridique.`
+    }
+
+    const results: Record<string, string> = {}
+
+    for (const [docType, prompt] of Object.entries(docPrompts)) {
       const message = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1500,
@@ -148,16 +48,13 @@ export async function POST(req: Request) {
       const content = message.content[0]
       if (content.type === 'text') {
         results[docType] = content.text
-
         await supabase.from('documents').upsert({
           contact_id: contactId,
           user_id: contact.user_id,
           type: docType,
           content: content.text,
           created_at: new Date().toISOString()
-        }, {
-          onConflict: 'contact_id,type'
-        })
+        }, { onConflict: 'contact_id,type' })
       }
     }
 
