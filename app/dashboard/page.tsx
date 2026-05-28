@@ -104,7 +104,7 @@ export default function Dashboard() {
         ) : (
           <div className="contact-grid">
             {contacts.map((c) => (
-              <div key={c.id} className="contact-card">
+              <div key={c.id} className="contact-card" onClick={() => window.location.href=`/dashboard/contact/${c.id}`}>
                 <div className="contact-name">{c.name}</div>
                 <div className="contact-url">{c.url}</div>
                 <div className="contact-status">✦ Documents à générer</div>
