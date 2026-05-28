@@ -45,7 +45,8 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après, avec exactement 
       return NextResponse.json({ error: 'Réponse IA invalide' }, { status: 500 })
     }
 
-    const brand = JSON.parse(content.text)
+    const clean = content.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    const brand = JSON.parse(clean)
 
     await supabase.from('contacts').update({
       brand_colors: brand.brand_colors,
