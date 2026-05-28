@@ -11,6 +11,8 @@ export default function ContactPage() {
   const [docs, setDocs] = useState<any[]>([])
   const [showReanalyzeConfirm, setShowReanalyzeConfirm] = useState(false)
   const [showMoreData, setShowMoreData] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [generated, setGenerated] = useState(false)
 
   useEffect(() => {
     supabase.from('contacts').select('*').eq('id', id).single().then(({ data }) => {
@@ -44,6 +46,26 @@ export default function ContactPage() {
     } else {
       handleAnalyze()
     }
+  }
+
+  const handleGenerate = async () => {
+    setGenerating(true)
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contactId: id })
+    })
+    const data = await res.json()
+    if (data.success) {
+      setGenerated(true)
+      const { data: newDocs } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('contact_id', id)
+        .order('created_at', { ascending: false })
+      if (newDocs) setDocs(newDocs)
+    }
+    setGenerating(false)
   }
 
   if (!contact) return null
@@ -87,8 +109,6 @@ export default function ContactPage() {
         .action-primary{background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;}
         .action-secondary{background:#0D1B35;border:1px solid #0F2040;color:#F0F4FF;}
         .action-secondary:hover{border-color:#4F8EF7;}
-        .action-ghost{background:transparent;border:1px solid #0F1E3A;color:#4A6280;font-size:13px;}
-        .action-ghost:hover{border-color:#4A6280;color:#F0F4FF;}
         .doc-item{background:#050B18;border:1px solid #0F1E3A;border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:border-color .2s;margin-bottom:8px;}
         .doc-item:last-child{margin-bottom:0;}
         .doc-item:hover{border-color:#4F8EF7;}
@@ -111,8 +131,8 @@ export default function ContactPage() {
         .info-card{background:#050B18;border-radius:10px;padding:12px;}
         .info-label{font-size:11px;color:#4A6280;font-style:italic;margin-bottom:3px;}
         .info-value{font-size:14px;font-weight:500;}
-        .info-full{grid-column:1/-1;}
         .generate-btn{width:100%;padding:15px;border-radius:12px;background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;font-family:'Playfair Display',serif;font-size:16px;font-style:italic;border:none;cursor:pointer;margin-top:20px;}
+        .generate-btn:disabled{opacity:0.6;cursor:not-allowed;}
         .more-btn{background:transparent;border:1px solid #0F1E3A;color:#4A6280;padding:8px 16px;border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:13px;font-style:italic;cursor:pointer;margin-top:14px;width:100%;}
         .more-btn:hover{border-color:#4A6280;color:#F0F4FF;}
         .more-data{margin-top:14px;background:#050B18;border-radius:10px;padding:14px;}
@@ -122,6 +142,7 @@ export default function ContactPage() {
         .more-value{color:#F0F4FF;text-align:right;}
         .values-wrap{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
         .value-tag{background:#0D1B35;border:1px solid #0F2040;border-radius:20px;padding:4px 10px;font-size:11px;font-style:italic;color:#4F8EF7;}
+        .success-msg{text-align:center;padding:16px;background:#0A1F0A;border:1px solid #1A4A1A;border-radius:10px;margin-top:16px;font-size:14px;color:#4F8EF7;font-style:italic;}
         .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:100;}
         .modal{background:#070F22;border:1px solid #0F2040;border-radius:20px;padding:36px;max-width:420px;width:90%;text-align:center;}
         .modal-h{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;margin-bottom:10px;}
@@ -147,7 +168,6 @@ export default function ContactPage() {
       </div>
 
       <div className="layout">
-        {/* Colonne gauche */}
         <div className="col">
           <div className="panel">
             <div className="panel-h">Palette</div>
@@ -183,13 +203,12 @@ export default function ContactPage() {
           </div>
         </div>
 
-        {/* Colonne centre */}
         <div className="col">
           <div className="panel">
             <div className="panel-h">Actions</div>
             <button className="action-btn action-primary" onClick={handleAnalyzeClick} disabled={analyzing}>
               <span>✦</span>
-              {analyzing ? 'Analyse...' : brand ? 'Ré-analyser' : 'Lancer l\'analyse'}
+              {analyzing ? 'Analyse...' : brand ? 'Ré-analyser' : "Lancer l'analyse"}
             </button>
             <button className="action-btn action-secondary">
               <span>+</span> Ajouter une commande
@@ -216,7 +235,6 @@ export default function ContactPage() {
           </div>
         </div>
 
-        {/* Zone principale */}
         <div className="col">
           <div className="main-panel">
             {analyzing ? (
@@ -295,7 +313,13 @@ export default function ContactPage() {
                   </div>
                 )}
 
-                <button className="generate-btn">✦ Générer tous les documents →</button>
+                {generated && (
+                  <div className="success-msg">✦ Tous les documents ont été générés !</div>
+                )}
+
+                <button className="generate-btn" onClick={handleGenerate} disabled={generating}>
+                  {generating ? '⏳ Génération en cours...' : '✦ Générer tous les documents →'}
+                </button>
               </div>
             ) : (
               <>
