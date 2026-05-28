@@ -25,27 +25,31 @@ export async function POST(req: Request) {
       max_tokens: 2000,
       messages: [{
         role: 'user',
-        content: `Tu es un expert en branding et design. Analyse ce code HTML d'un site web professionnel et extrait TOUTES les informations de branding disponibles.
+        content: `Tu es un expert en branding et identité visuelle. Analyse ce HTML et extrait le branding RÉEL de l'entreprise.
+
+RÈGLES IMPORTANTES :
+- Ignore absolument les couleurs génériques de frameworks : #0D6EFF #007bff #0066cc #6c757d #212529 (Bootstrap/Odoo/Shopify/WordPress)
+- Concentre-toi UNIQUEMENT sur les couleurs personnalisées et uniques à cette marque
+- Pour les fonts : cherche @font-face, Google Fonts imports, font-family dans les styles inline et balises link
+- Si tu ne trouves pas de vraies couleurs de marque, retourne des tons neutres cohérents avec le secteur
+- Le ton doit refléter le contenu textuel et l'ambiance générale du site
 
 HTML :
 ${truncated}
 
-Réponds UNIQUEMENT en JSON valide, sans backticks, sans texte avant ou après, avec exactement cette structure :
+Réponds UNIQUEMENT en JSON valide, sans backticks, sans texte avant ou après :
 {
-  "brand_colors": ["#hex1", "#hex2", "#hex3", "#hex4"],
+  "brand_colors": ["#hex1", "#hex2", "#hex3"],
   "brand_fonts": ["Font1", "Font2"],
   "brand_tone": "un seul mot parmi: professionnel / créatif / luxe / casual / technique / bienveillant / dynamique",
-  "brand_sector": "secteur d'activité en 2-3 mots",
-  "brand_name": "nom de la marque ou entreprise",
-  "brand_email": "email de contact si trouvé sinon null",
-  "brand_phone": "téléphone si trouvé sinon null",
-  "brand_address": "adresse physique si trouvée sinon null",
-  "brand_description": "description de l'entreprise en 1-2 phrases",
+  "brand_sector": "secteur en 2-3 mots",
+  "brand_name": "nom de la marque",
+  "brand_email": "email ou null",
+  "brand_phone": "téléphone ou null",
+  "brand_address": "adresse ou null",
+  "brand_description": "description en 1-2 phrases",
   "brand_values": ["valeur1", "valeur2", "valeur3"]
-}
-
-Pour les couleurs : cherche dans les styles CSS inline, les classes Tailwind, les variables CSS. Retourne des codes HEX valides uniquement.
-Pour les fonts : cherche dans les imports Google Fonts, les font-family CSS.`
+}`
       }]
     })
 
