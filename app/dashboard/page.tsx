@@ -8,6 +8,8 @@ export default function Dashboard() {
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name: '', url: '' })
+  const [deleteModal, setDeleteModal] = useState<string | null>(null)
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -26,6 +28,10 @@ export default function Dashboard() {
 
   const handleAdd = async () => {
     if (!form.name || !form.url) return
+    if (contacts.length >= 2) {
+      alert('Plan Starter limité à 2 contacts. Passez au plan Solo pour en ajouter plus.')
+      return
+    }
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
     await supabase.from('contacts').insert([{ name: form.name, url: form.url, user_id: user!.id }])
@@ -33,6 +39,15 @@ export default function Dashboard() {
     setShowForm(false)
     loadContacts(user!.id)
     setLoading(false)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmed) return
+    await supabase.from('contacts').delete().eq('id', deleteModal)
+    setDeleteModal(null)
+    setDeleteConfirmed(false)
+    const { data: { user } } = await supabase.auth.getUser()
+    loadContacts(user!.id)
   }
 
   const handleLogout = async () => {
@@ -73,12 +88,19 @@ export default function Dashboard() {
         .modal-actions{display:flex;gap:12px;justify-content:flex-end;}
         .modal-cancel{background:transparent;border:1px solid #0F2040;color:#4A6280;padding:12px 20px;border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;cursor:pointer;}
         .modal-submit{background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;padding:12px 24px;border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;border:none;cursor:pointer;}
+        .modal-delete{padding:12px 24px;border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;border:none;cursor:pointer;transition:background .2s;}
+        .modal-check{display:flex;align-items:center;gap:10px;margin:20px 0;cursor:pointer;font-size:15px;color:#6B84AA;font-style:italic;}
+        .modal-check input{width:16px;height:16px;cursor:pointer;}
+        .modal-warn{color:#F7954F;font-size:14px;font-style:italic;margin-bottom:20px;padding:12px;background:#1A0F08;border-radius:8px;border:1px solid #3A2010;}
         .contact-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
-        .contact-card{background:#070F22;border:1px solid #0F2040;border-radius:16px;padding:24px;cursor:pointer;transition:border-color .2s;}
+        .contact-card{background:#070F22;border:1px solid #0F2040;border-radius:16px;padding:24px;position:relative;transition:border-color .2s;}
         .contact-card:hover{border-color:#4F8EF7;}
+        .contact-clickable{cursor:pointer;}
         .contact-name{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:6px;}
         .contact-url{font-size:13px;color:#4A6280;font-style:italic;margin-bottom:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .contact-status{font-size:12px;color:#4F8EF7;font-style:italic;}
+        .contact-delete{position:absolute;top:12px;right:12px;background:transparent;border:none;color:#1E3050;cursor:pointer;font-size:18px;padding:4px;line-height:1;}
+        .contact-delete:hover{color:#dc2626;}
       `}</style>
 
       <nav className="dash-nav">
@@ -104,10 +126,13 @@ export default function Dashboard() {
         ) : (
           <div className="contact-grid">
             {contacts.map((c) => (
-              <div key={c.id} className="contact-card" onClick={() => window.location.href=`/dashboard/contact/${c.id}`}>
-                <div className="contact-name">{c.name}</div>
-                <div className="contact-url">{c.url}</div>
-                <div className="contact-status">✦ Documents à générer</div>
+              <div key={c.id} className="contact-card">
+                <div className="contact-clickable" onClick={() => window.location.href=`/dashboard/contact/${c.id}`}>
+                  <div className="contact-name">{c.name}</div>
+                  <div className="contact-url">{c.url}</div>
+                  <div className="contact-status">✦ Documents à générer</div>
+                </div>
+                <button className="contact-delete" onClick={(e) => { e.stopPropagation(); setDeleteModal(c.id); setDeleteConfirmed(false) }}>✕</button>
               </div>
             ))}
           </div>
@@ -127,6 +152,29 @@ export default function Dashboard() {
               <button className="modal-cancel" onClick={() => setShowForm(false)}>Annuler</button>
               <button className="modal-submit" onClick={handleAdd} disabled={loading}>
                 {loading ? 'Ajout...' : 'Ajouter →'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteModal && (
+        <div className="modal-overlay" onClick={() => setDeleteModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-h">Supprimer ce contact ?</h2>
+            <p className="modal-warn">⚠️ Cette action est irréversible. Tous les documents générés pour ce contact seront définitivement perdus et ne pourront pas être récupérés.</p>
+            <label className="modal-check">
+              <input type="checkbox" checked={deleteConfirmed} onChange={(e) => setDeleteConfirmed(e.target.checked)} />
+              Je comprends que ces données ne seront pas récupérables
+            </label>
+            <div className="modal-actions">
+              <button className="modal-cancel" onClick={() => setDeleteModal(null)}>Annuler</button>
+              <button
+                className="modal-delete"
+                style={{background: deleteConfirmed ? '#dc2626' : '#1E3050', color: '#fff', cursor: deleteConfirmed ? 'pointer' : 'not-allowed'}}
+                onClick={confirmDelete}
+              >
+                Supprimer définitivement
               </button>
             </div>
           </div>
