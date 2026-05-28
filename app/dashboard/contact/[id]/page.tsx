@@ -50,7 +50,7 @@ export default function ContactPage() {
 
   const handleGenerate = async () => {
     setGenerating(true)
-    const res = await fetch('/api/generate', {
+    const res = await fetch('https://www.brandsheet.fr/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contactId: id })
