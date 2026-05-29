@@ -15,6 +15,16 @@ export default function ContactPage() {
   const [generated, setGenerated] = useState(false)
   const [credits, setCredits] = useState<number | null>(null)
   const [showNoCredits, setShowNoCredits] = useState(false)
+  const [operations, setOperations] = useState<any[]>([])
+  const [showOpForm, setShowOpForm] = useState(false)
+  const [opForm, setOpForm] = useState<{ name: string; description: string; files: File[] }>({ name: '', description: '', files: [] })
+  const [opSaving, setOpSaving] = useState(false)
+  const [opError, setOpError] = useState<string | null>(null)
+
+  const loadOperations = async () => {
+    const { data } = await supabase.from('operations').select('*').eq('contact_id', id).order('created_at', { ascending: false })
+    if (data) setOperations(data)
+  }
 
   useEffect(() => {
     supabase.from('contacts').select('*').eq('id', id).single().then(({ data }) => {
@@ -26,6 +36,7 @@ export default function ContactPage() {
     supabase.from('documents').select('*').eq('contact_id', id).order('created_at', { ascending: false }).then(({ data }) => {
       if (data) setDocs(data)
     })
+    loadOperations()
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) return
       supabase.from('user_credits').select('credits').eq('user_id', data.user.id).maybeSingle().then(({ data: c }) => {
@@ -33,6 +44,46 @@ export default function ContactPage() {
       })
     })
   }, [id])
+
+  const handleCreateOperation = async () => {
+    if (!opForm.name.trim()) {
+      setOpError('Le nom est requis')
+      return
+    }
+    setOpError(null)
+    setOpSaving(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Non authentifié')
+
+      const imageUrls: string[] = []
+      for (const file of opForm.files) {
+        const ext = file.name.split('.').pop() || 'png'
+        const path = `${user.id}/${id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+        const { error: upErr } = await supabase.storage.from('operations').upload(path, file, { upsert: false })
+        if (upErr) throw upErr
+        const { data: pub } = supabase.storage.from('operations').getPublicUrl(path)
+        imageUrls.push(pub.publicUrl)
+      }
+
+      const { error: insErr } = await supabase.from('operations').insert({
+        contact_id: id,
+        user_id: user.id,
+        name: opForm.name.trim(),
+        description: opForm.description.trim() || null,
+        images: imageUrls,
+      })
+      if (insErr) throw insErr
+
+      setOpForm({ name: '', description: '', files: [] })
+      setShowOpForm(false)
+      await loadOperations()
+    } catch (e) {
+      setOpError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setOpSaving(false)
+    }
+  }
 
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
 
@@ -242,9 +293,29 @@ export default function ContactPage() {
               <span>✦</span>
               {analyzing ? 'Analyse...' : brand ? 'Ré-analyser' : "Lancer l'analyse"}
             </button>
-            <button className="action-btn action-secondary">
-              <span>+</span> Ajouter une commande
+            <button className="action-btn action-secondary" onClick={() => { setOpError(null); setShowOpForm(true) }}>
+              <span>+</span> Ajouter une opération
             </button>
+          </div>
+
+          <div className="panel">
+            <div className="panel-h">Mes opérations</div>
+            {operations.length === 0 ? (
+              <p style={{fontSize:12,color:'#1E3050',fontStyle:'italic'}}>Aucune opération</p>
+            ) : (
+              operations.map((op) => (
+                <div key={op.id} className="doc-item">
+                  <div className="doc-item-left">
+                    <span className="doc-icon">◈</span>
+                    <div>
+                      <div className="doc-label">{op.name}</div>
+                      <div className="doc-status">{op.images?.length || 0} image{(op.images?.length || 0) > 1 ? 's' : ''}</div>
+                    </div>
+                  </div>
+                  <span className="doc-arrow">→</span>
+                </div>
+              ))
+            )}
           </div>
 
           <div className="panel">
@@ -370,6 +441,61 @@ export default function ContactPage() {
           </div>
         </div>
       </div>
+
+      {showOpForm && (
+        <div className="modal-overlay" onClick={() => !opSaving && setShowOpForm(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{maxWidth:520}}>
+            <h2 className="modal-h">Nouvelle opération</h2>
+            <p className="modal-p" style={{textAlign:'left'}}>Ajoutez le contexte de la prestation pour générer des documents adaptés. Le branding du contact sera réutilisé.</p>
+
+            <label className="panel-h" style={{display:'block',marginTop:8,marginBottom:6}}>Nom de l'opération</label>
+            <input
+              className="modal-input"
+              placeholder="Lancement collection été"
+              value={opForm.name}
+              onChange={(e) => setOpForm({...opForm, name: e.target.value})}
+              disabled={opSaving}
+            />
+
+            <label className="panel-h" style={{display:'block',marginTop:8,marginBottom:6}}>Description / contexte</label>
+            <textarea
+              className="modal-input"
+              placeholder="Type de produit, public visé, ton souhaité, particularités..."
+              value={opForm.description}
+              onChange={(e) => setOpForm({...opForm, description: e.target.value})}
+              disabled={opSaving}
+              rows={4}
+              style={{resize:'vertical',minHeight:90,fontFamily:"'Cormorant Garamond',serif"}}
+            />
+
+            <label className="panel-h" style={{display:'block',marginTop:8,marginBottom:6}}>Visuels produit (logo, photos, miniatures...)</label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              disabled={opSaving}
+              onChange={(e) => setOpForm({...opForm, files: Array.from(e.target.files || [])})}
+              style={{width:'100%',background:'#050B18',border:'1px solid #0F2040',borderRadius:10,padding:10,color:'#6B84AA',fontFamily:"'Cormorant Garamond',serif",fontSize:13,marginBottom:8}}
+            />
+            {opForm.files.length > 0 && (
+              <p style={{fontSize:12,color:'#4F8EF7',fontStyle:'italic',marginBottom:12}}>
+                {opForm.files.length} fichier{opForm.files.length > 1 ? 's' : ''} sélectionné{opForm.files.length > 1 ? 's' : ''}
+              </p>
+            )}
+
+            {opError && (
+              <p style={{fontSize:13,color:'#F7954F',fontStyle:'italic',padding:10,background:'#1A0F08',border:'1px solid #3A2010',borderRadius:8,marginBottom:12,wordBreak:'break-word'}}>{opError}</p>
+            )}
+
+            <div className="modal-actions">
+              <button className="modal-cancel" onClick={() => setShowOpForm(false)} disabled={opSaving}>Annuler</button>
+              <button className="modal-confirm" onClick={handleCreateOperation} disabled={opSaving}>
+                {opSaving ? 'Création...' : 'Créer l\'opération →'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showReanalyzeConfirm && (
         <div className="modal-overlay" onClick={() => setShowReanalyzeConfirm(false)}>

@@ -132,3 +132,84 @@ create policy "logos_authenticated_delete" on storage.objects
     bucket_id = 'logos'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+-- =========================================================
+-- 6) Opérations (campagnes / commandes par contact)
+-- =========================================================
+-- Une opération = un contexte produit/prestation. Les documents générés
+-- sont rattachés à une opération, qui réutilise le branding du contact.
+create table if not exists operations (
+  id uuid primary key default gen_random_uuid(),
+  contact_id uuid not null references contacts(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  description text,
+  images text[] default '{}',
+  created_at timestamptz default now()
+);
+
+create index if not exists operations_contact_id_idx on operations(contact_id);
+create index if not exists operations_user_id_idx on operations(user_id);
+
+alter table operations enable row level security;
+
+drop policy if exists "operations_select_own" on operations;
+create policy "operations_select_own" on operations
+  for select to authenticated
+  using (auth.uid() = user_id);
+
+drop policy if exists "operations_insert_own" on operations;
+create policy "operations_insert_own" on operations
+  for insert to authenticated
+  with check (auth.uid() = user_id);
+
+drop policy if exists "operations_update_own" on operations;
+create policy "operations_update_own" on operations
+  for update to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "operations_delete_own" on operations;
+create policy "operations_delete_own" on operations
+  for delete to authenticated
+  using (auth.uid() = user_id);
+
+-- Lien documents <-> operations (nullable : anciens documents sans opération)
+alter table documents add column if not exists operation_id uuid references operations(id) on delete cascade;
+create index if not exists documents_operation_id_idx on documents(operation_id);
+
+-- =========================================================
+-- 7) Bucket Storage pour les images d'opérations (public en lecture)
+-- =========================================================
+insert into storage.buckets (id, name, public)
+values ('operations', 'operations', true)
+on conflict (id) do nothing;
+
+drop policy if exists "operations_public_read" on storage.objects;
+create policy "operations_public_read" on storage.objects
+  for select
+  using (bucket_id = 'operations');
+
+drop policy if exists "operations_authenticated_write" on storage.objects;
+create policy "operations_authenticated_write" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'operations'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "operations_authenticated_update" on storage.objects;
+create policy "operations_authenticated_update" on storage.objects
+  for update to authenticated
+  using (
+    bucket_id = 'operations'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "operations_authenticated_delete" on storage.objects;
+create policy "operations_authenticated_delete" on storage.objects
+  for delete to authenticated
+  using (
+    bucket_id = 'operations'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
