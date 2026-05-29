@@ -16,6 +16,7 @@ export default function ContactPage() {
   const [credits, setCredits] = useState<number | null>(null)
   const [showNoCredits, setShowNoCredits] = useState(false)
   const [operations, setOperations] = useState<any[]>([])
+  const [selectedOpId, setSelectedOpId] = useState<string | null>(null)
   const [showOpForm, setShowOpForm] = useState(false)
   const [opForm, setOpForm] = useState<{ name: string; description: string; files: File[] }>({ name: '', description: '', files: [] })
   const [opSaving, setOpSaving] = useState(false)
@@ -128,7 +129,7 @@ export default function ContactPage() {
     const res = await fetch('https://www.brandsheet.fr/api/gen', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contactId: id })
+      body: JSON.stringify({ contactId: id, operationId: selectedOpId })
     })
     const data = await res.json()
     if (res.status === 402) {
@@ -194,6 +195,11 @@ export default function ContactPage() {
         .doc-item{background:#050B18;border:1px solid #0F1E3A;border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:border-color .2s;margin-bottom:8px;}
         .doc-item:last-child{margin-bottom:0;}
         .doc-item:hover{border-color:#4F8EF7;}
+        .doc-item-selected{background:rgba(79,142,247,0.18);border-color:#7BAAFB;box-shadow:0 0 0 1px #7BAAFB inset;}
+        .doc-item-selected .doc-label{color:#A8C8FC;}
+        .doc-item-selected .doc-status{color:#7BAAFB;}
+        .doc-item-selected .doc-icon{color:#A8C8FC;}
+        .doc-item-selected .doc-arrow{color:#7BAAFB;}
         .doc-item-left{display:flex;align-items:center;gap:10px;}
         .doc-icon{font-size:15px;color:#4F8EF7;}
         .doc-label{font-size:13px;font-style:italic;}
@@ -303,18 +309,25 @@ export default function ContactPage() {
             {operations.length === 0 ? (
               <p style={{fontSize:12,color:'#1E3050',fontStyle:'italic'}}>Aucune opération</p>
             ) : (
-              operations.map((op) => (
-                <div key={op.id} className="doc-item">
-                  <div className="doc-item-left">
-                    <span className="doc-icon">◈</span>
-                    <div>
-                      <div className="doc-label">{op.name}</div>
-                      <div className="doc-status">{op.images?.length || 0} image{(op.images?.length || 0) > 1 ? 's' : ''}</div>
+              operations.map((op) => {
+                const selected = selectedOpId === op.id
+                return (
+                  <div
+                    key={op.id}
+                    className={`doc-item${selected ? ' doc-item-selected' : ''}`}
+                    onClick={() => setSelectedOpId(selected ? null : op.id)}
+                  >
+                    <div className="doc-item-left">
+                      <span className="doc-icon">◈</span>
+                      <div>
+                        <div className="doc-label">{op.name}</div>
+                        <div className="doc-status">{op.images?.length || 0} image{(op.images?.length || 0) > 1 ? 's' : ''}</div>
+                      </div>
                     </div>
+                    <span className="doc-arrow">{selected ? '✓' : '→'}</span>
                   </div>
-                  <span className="doc-arrow">→</span>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
 

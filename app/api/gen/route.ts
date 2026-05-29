@@ -6,7 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { GENERATION_COST, getCredits, deductCredits } from '@/lib/credits'
 
 export async function POST(req: Request) {
-  const { contactId, orderInfo } = await req.json()
+  const { contactId, operationId, orderInfo } = await req.json()
 
   if (!contactId) {
     return NextResponse.json({ error: 'contactId requis' }, { status: 400 })
@@ -23,6 +23,20 @@ export async function POST(req: Request) {
 
     if (!contact) {
       return NextResponse.json({ error: 'Contact introuvable' }, { status: 404 })
+    }
+
+    let operation: any = null
+    if (operationId) {
+      const { data: op } = await supabaseAdmin
+        .from('operations')
+        .select('*')
+        .eq('id', operationId)
+        .eq('contact_id', contactId)
+        .maybeSingle()
+      if (!op) {
+        return NextResponse.json({ error: 'Opération introuvable pour ce contact' }, { status: 404 })
+      }
+      operation = op
     }
 
     const userId = contact.user_id
@@ -46,7 +60,15 @@ export async function POST(req: Request) {
       .maybeSingle()
 
     const b = contact
-    const o = orderInfo || 'Prestation de services'
+    const o = operation
+      ? [
+          operation.name && `Opération: ${operation.name}`,
+          operation.description && `Contexte: ${operation.description}`,
+          operation.images?.length && `Visuels fournis: ${operation.images.length} image(s) — utiliser les références produit dans le ton et la mise en avant`,
+        ]
+          .filter(Boolean)
+          .join(' | ')
+      : (orderInfo || 'Prestation de services')
     const brandInfo = `Marque: ${b.brand_name || b.name} | Secteur: ${b.brand_sector} | Ton: ${b.brand_tone} | Email: ${b.brand_email || ''} | Tel: ${b.brand_phone || ''} | Adresse: ${b.brand_address || ''} | Description: ${b.brand_description || ''} | Valeurs: ${b.brand_values?.join(', ') || ''}`
 
     const issuerInfo = profile
@@ -85,13 +107,14 @@ export async function POST(req: Request) {
       const content = message.content[0]
       if (content.type === 'text') {
         results[docType] = content.text
-        await supabase.from('documents').upsert({
+        await supabaseAdmin.from('documents').upsert({
           contact_id: contactId,
+          operation_id: operationId ?? null,
           user_id: contact.user_id,
           type: docType,
           content: content.text,
           created_at: new Date().toISOString()
-        }, { onConflict: 'contact_id,type' })
+        }, { onConflict: 'contact_id,operation_id,type' })
       }
     }
 
