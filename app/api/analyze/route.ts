@@ -13,11 +13,43 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'URL et contactId requis' }, { status: 400 })
   }
 
+  // Normalise l'URL : ajoute https:// si l'utilisateur n'a pas mis de protocole
+  let targetUrl = url.trim()
+  if (!/^https?:\/\//i.test(targetUrl)) targetUrl = 'https://' + targetUrl
+
   try {
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    })
-    const html = await response.text()
+    let html: string
+    try {
+      const response = await fetch(targetUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
+        },
+        signal: AbortSignal.timeout(20000),
+      })
+      if (!response.ok) {
+        return NextResponse.json(
+          { error: 'Site inaccessible', detail: `HTTP ${response.status} sur ${targetUrl}` },
+          { status: 502 },
+        )
+      }
+      html = await response.text()
+    } catch (fetchErr) {
+      const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr)
+      return NextResponse.json(
+        { error: 'Échec du scraping', detail: `Impossible de lire ${targetUrl} — ${msg}` },
+        { status: 502 },
+      )
+    }
+
+    if (!html || html.length < 100) {
+      return NextResponse.json(
+        { error: 'Page vide', detail: `Le site ${targetUrl} a renvoyé ${html?.length ?? 0} caractères` },
+        { status: 502 },
+      )
+    }
+
     const truncated = html.slice(0, 12000)
 
     const message = await anthropic.messages.create({
@@ -59,7 +91,15 @@ Réponds UNIQUEMENT en JSON valide, sans backticks, sans texte avant ou après :
     }
 
     const clean = content.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    const brand = JSON.parse(clean)
+    let brand
+    try {
+      brand = JSON.parse(clean)
+    } catch {
+      return NextResponse.json(
+        { error: 'Réponse IA non JSON', detail: clean.slice(0, 500) },
+        { status: 500 },
+      )
+    }
 
     await supabaseAdmin.from('contacts').update({
       brand_colors: brand.brand_colors,

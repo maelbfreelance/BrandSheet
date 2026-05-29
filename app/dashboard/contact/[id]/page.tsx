@@ -34,18 +34,30 @@ export default function ContactPage() {
     })
   }, [id])
 
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null)
+
   const handleAnalyze = async () => {
     setShowReanalyzeConfirm(false)
+    setAnalyzeError(null)
     setAnalyzing(true)
-    const res = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: contact.url, contactId: id })
-    })
-    const data = await res.json()
-    setBrand(data)
-    setContact({ ...contact, ...data })
-    setAnalyzing(false)
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: contact.url, contactId: id })
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        setAnalyzeError(data.detail || data.error || `HTTP ${res.status}`)
+      } else {
+        setBrand(data)
+        setContact({ ...contact, ...data })
+      }
+    } catch (e) {
+      setAnalyzeError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setAnalyzing(false)
+    }
   }
 
   const handleAnalyzeClick = () => {
@@ -261,6 +273,12 @@ export default function ContactPage() {
               <div>
                 <p className="analyzing-text">L'IA analyse le site...</p>
                 <p className="analyzing-sub">Couleurs, typographies, ton éditorial</p>
+              </div>
+            ) : analyzeError ? (
+              <div style={{textAlign:'center',maxWidth:420}}>
+                <h2 className="main-panel-h" style={{color:'#F7954F'}}>Analyse impossible</h2>
+                <p className="main-panel-p" style={{wordBreak:'break-word'}}>{analyzeError}</p>
+                <button className="analyze-btn" onClick={handleAnalyze}>↻ Réessayer</button>
               </div>
             ) : brand ? (
               <div className="brand-result">
