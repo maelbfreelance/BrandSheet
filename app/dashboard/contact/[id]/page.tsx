@@ -332,9 +332,13 @@ export default function ContactPage() {
           </div>
 
           <div className="panel">
-            <div className="panel-h">Mes documents</div>
+            <div className="panel-h">
+              {selectedOpId
+                ? `Docs — ${operations.find(o => o.id === selectedOpId)?.name || 'opération'}`
+                : 'Docs — sans opération'}
+            </div>
             {docTypes.map((dt) => {
-              const doc = docs.find(d => d.type === dt.key)
+              const doc = docs.find(d => d.type === dt.key && (d.operation_id ?? null) === (selectedOpId ?? null))
               return (
                 <div key={dt.key} className="doc-item">
                   <div className="doc-item-left">
@@ -442,7 +446,12 @@ export default function ContactPage() {
                 <button className="generate-btn" onClick={handleGenerate} disabled={generating}>
                   {generating ? '⏳ Génération en cours...' : '✦ Générer tous les documents →'}
                 </button>
-                <p className="cost-hint">Coût : 10 crédits {typeof credits === 'number' && <>· solde {credits}</>}</p>
+                <p className="cost-hint">
+                  {selectedOpId
+                    ? <>Pour l'opération <strong style={{color:'#A8C8FC'}}>{operations.find(o => o.id === selectedOpId)?.name}</strong> · </>
+                    : <>Sans opération · </>}
+                  Coût : 10 crédits {typeof credits === 'number' && <>· solde {credits}</>}
+                </p>
               </div>
             ) : (
               <>
