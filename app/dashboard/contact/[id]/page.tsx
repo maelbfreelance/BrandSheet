@@ -75,18 +75,92 @@ export default function ContactPage() {
   }
 
   const handleDownloadDoc = (doc: any) => {
-    const blob = new Blob([doc.content || ''], { type: 'text/plain;charset=utf-8' })
+    const content = doc.content || ''
+    const isHtml = content.trim().startsWith('<')
+    const blob = new Blob([content], { type: isHtml ? 'text/html;charset=utf-8' : 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     const opName = operations.find(o => o.id === doc.operation_id)?.name || 'sans-operation'
     const slug = `${opName}-${doc.type}-${new Date(doc.created_at).toISOString().slice(0, 10)}`
       .toLowerCase().replace(/[^a-z0-9-]+/g, '-')
     a.href = url
-    a.download = `${slug}.txt`
+    a.download = `${slug}.${isHtml ? 'html' : 'txt'}`
     document.body.appendChild(a)
     a.click()
     a.remove()
     URL.revokeObjectURL(url)
+  }
+
+  const [viewerDoc, setViewerDoc] = useState<any>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSavingDoc, setIsSavingDoc] = useState(false)
+  const [isRegen, setIsRegen] = useState(false)
+  const [docError, setDocError] = useState<string | null>(null)
+  const viewerIframeRef = React.useRef<HTMLIFrameElement>(null)
+
+  const openViewer = (doc: any) => {
+    setDocError(null)
+    setIsEditing(false)
+    setViewerDoc(doc)
+  }
+  const closeViewer = () => {
+    setViewerDoc(null)
+    setIsEditing(false)
+    setDocError(null)
+  }
+  const toggleEdit = () => {
+    const w = viewerIframeRef.current?.contentWindow as any
+    if (!w?.brandsheetSetEdit) return
+    const next = !isEditing
+    w.brandsheetSetEdit(next)
+    setIsEditing(next)
+  }
+  const saveDocEdits = async () => {
+    if (!viewerDoc) return
+    const w = viewerIframeRef.current?.contentWindow as any
+    if (!w?.brandsheetGetHTML) return
+    setIsSavingDoc(true)
+    setDocError(null)
+    try {
+      const content = w.brandsheetGetHTML()
+      const res = await fetch('/api/doc-save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ docId: viewerDoc.id, content }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || data.error || `HTTP ${res.status}`)
+      setDocs((prev) => prev.map((d) => (d.id === viewerDoc.id ? { ...d, content } : d)))
+      setViewerDoc({ ...viewerDoc, content })
+      w.brandsheetSetEdit(false)
+      setIsEditing(false)
+    } catch (e) {
+      setDocError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setIsSavingDoc(false)
+    }
+  }
+  const regenerateDoc = async () => {
+    if (!viewerDoc) return
+    setIsRegen(true)
+    setDocError(null)
+    try {
+      const res = await fetch('/api/regen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ docId: viewerDoc.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || data.detail || data.error || `HTTP ${res.status}`)
+      const updated = { ...viewerDoc, content: data.content }
+      setDocs((prev) => prev.map((d) => (d.id === viewerDoc.id ? updated : d)))
+      setViewerDoc(updated)
+      if (typeof data.credits === 'number') setCredits(data.credits)
+    } catch (e) {
+      setDocError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setIsRegen(false)
+    }
   }
 
   const handleCreateOperation = async () => {
@@ -388,7 +462,7 @@ export default function ContactPage() {
               {docTypes.map((dt) => {
                 const doc = docs.find(d => d.type === dt.key && d.operation_id === selectedOpId)
                 return (
-                  <div key={dt.key} className="doc-item" onClick={() => doc && handleDownloadDoc(doc)} style={{cursor: doc ? 'pointer' : 'default'}}>
+                  <div key={dt.key} className="doc-item" onClick={() => doc && openViewer(doc)} style={{cursor: doc ? 'pointer' : 'default'}}>
                     <div className="doc-item-left">
                       <span className="doc-icon">{dt.icon}</span>
                       <div>
@@ -415,15 +489,15 @@ export default function ContactPage() {
                 return visible.map((doc) => {
                   const opName = operations.find(o => o.id === doc.operation_id)?.name || '—'
                   return (
-                    <div key={doc.id} className="doc-item" onClick={() => handleDownloadDoc(doc)} style={{cursor:'pointer'}}>
+                    <div key={doc.id} className="doc-item" onClick={() => openViewer(doc)} style={{cursor:'pointer'}}>
                       <div className="doc-item-left">
-                        <span className="doc-icon">↓</span>
+                        <span className="doc-icon">◈</span>
                         <div>
                           <div className="doc-label">{docTypeLabels[doc.type] || doc.type}</div>
                           <div className="doc-status">{opName} · {new Date(doc.created_at).toLocaleDateString('fr-FR')}</div>
                         </div>
                       </div>
-                      <span className="doc-arrow">↓</span>
+                      <span className="doc-arrow">→</span>
                     </div>
                   )
                 })
@@ -595,6 +669,49 @@ export default function ContactPage() {
                 {opSaving ? 'Création...' : 'Créer l\'opération →'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {viewerDoc && (
+        <div className="modal-overlay" onClick={closeViewer} style={{padding:0}}>
+          <div onClick={(e) => e.stopPropagation()} style={{background:'#070F22',border:'1px solid #0F2040',borderRadius:14,width:'min(1100px,95vw)',height:'90vh',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 20px',borderBottom:'1px solid #0F2040',gap:12,flexWrap:'wrap'}}>
+              <div>
+                <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700}}>{docTypeLabels[viewerDoc.type] || viewerDoc.type}</div>
+                <div style={{fontSize:12,color:'#4A6280',fontStyle:'italic'}}>{operations.find(o => o.id === viewerDoc.operation_id)?.name || '—'} · {new Date(viewerDoc.created_at).toLocaleDateString('fr-FR')}</div>
+              </div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {!isEditing ? (
+                  <button onClick={toggleEdit} disabled={isRegen || isSavingDoc} style={{background:'#0D1B35',border:'1px solid #0F2040',color:'#F0F4FF',padding:'9px 16px',borderRadius:8,fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:'italic',cursor:'pointer'}}>✎ Éditer le texte</button>
+                ) : (
+                  <>
+                    <button onClick={saveDocEdits} disabled={isSavingDoc} style={{background:'linear-gradient(135deg,#4F8EF7,#7C3AED)',border:'none',color:'#fff',padding:'9px 16px',borderRadius:8,fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:'italic',cursor:'pointer'}}>{isSavingDoc ? 'Sauvegarde...' : '✓ Sauvegarder'}</button>
+                    <button onClick={toggleEdit} disabled={isSavingDoc} style={{background:'transparent',border:'1px solid #0F2040',color:'#4A6280',padding:'9px 16px',borderRadius:8,fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:'italic',cursor:'pointer'}}>Annuler</button>
+                  </>
+                )}
+                {plan !== 'starter' && !isEditing && (
+                  <button onClick={regenerateDoc} disabled={isRegen} style={{background:'#0D1B35',border:'1px solid #0F2040',color:'#A8C8FC',padding:'9px 16px',borderRadius:8,fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:'italic',cursor:'pointer'}}>{isRegen ? '⟳ Régénération...' : '⟳ Régénérer (2 crédits)'}</button>
+                )}
+                <button onClick={() => handleDownloadDoc(viewerDoc)} disabled={isEditing} style={{background:'#0D1B35',border:'1px solid #0F2040',color:'#F0F4FF',padding:'9px 16px',borderRadius:8,fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:'italic',cursor:isEditing?'not-allowed':'pointer',opacity:isEditing?0.5:1}}>↓ Télécharger</button>
+                <button onClick={closeViewer} style={{background:'transparent',border:'1px solid #0F2040',color:'#4A6280',padding:'9px 14px',borderRadius:8,fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:'italic',cursor:'pointer'}}>✕</button>
+              </div>
+            </div>
+            {docError && (
+              <div style={{padding:'10px 20px',background:'#1A0F08',borderBottom:'1px solid #3A2010',color:'#F7954F',fontSize:13,fontStyle:'italic'}}>{docError}</div>
+            )}
+            <iframe
+              ref={viewerIframeRef}
+              srcDoc={viewerDoc.content || '<p style="padding:40px;font-family:sans-serif;">Document vide</p>'}
+              sandbox="allow-same-origin allow-scripts"
+              style={{flex:1,width:'100%',border:'none',background:'#f4f4f7'}}
+              title={viewerDoc.type}
+            />
+            {plan === 'starter' && !isEditing && (
+              <div style={{padding:'10px 20px',borderTop:'1px solid #0F2040',fontSize:12,color:'#4A6280',fontStyle:'italic',textAlign:'center'}}>
+                La régénération automatique est réservée aux plans payants. <a onClick={() => window.location.href='/dashboard/credits'} style={{color:'#A8C8FC',cursor:'pointer'}}>Voir les plans →</a>
+              </div>
+            )}
           </div>
         </div>
       )}

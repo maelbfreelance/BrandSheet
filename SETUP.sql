@@ -149,8 +149,12 @@ create table if not exists operations (
   name text not null,
   description text,
   images text[] default '{}',
+  hero_image_url text,
   created_at timestamptz default now()
 );
+
+-- Pour les bases existantes : ajouter la colonne si elle manque
+alter table operations add column if not exists hero_image_url text;
 
 create index if not exists operations_contact_id_idx on operations(contact_id);
 create index if not exists operations_user_id_idx on operations(user_id);
