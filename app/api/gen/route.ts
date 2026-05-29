@@ -1,9 +1,15 @@
-// v3 — HTML output + hero image via gpt-image-1
+// v5 — HTML output + single scene image (product staged) with text overlay
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { GENERATION_COST, getCredits, deductCredits } from '@/lib/credits'
-import { buildDocPrompts, buildHtml, buildHeroPrompt, generateHeroImage, sanitizeBody } from '@/lib/doc-render'
+import {
+  buildDocPrompts,
+  buildHtml,
+  buildScenePrompt,
+  generateSceneImage,
+  sanitizeBody,
+} from '@/lib/doc-render'
 
 export async function POST(req: Request) {
   const { contactId, operationId } = await req.json()
@@ -37,19 +43,18 @@ export async function POST(req: Request) {
 
     const { data: profile } = await supabaseAdmin.from('profiles').select('*').eq('user_id', userId).maybeSingle()
 
-    // Hero image (1 par opération, mise en cache)
-    let heroUrl: string | null = operation?.hero_image_url || null
-    if (operation && !heroUrl) {
-      try {
-        heroUrl = await generateHeroImage(buildHeroPrompt(contact, operation), userId, operation.id)
-        await supabaseAdmin.from('operations').update({ hero_image_url: heroUrl }).eq('id', operation.id)
-      } catch (e) {
-        console.error('Hero image generation failed:', e)
-      }
+    // Une seule image scène par opération, mise en cache et réutilisée sur les 6 docs.
+    // Image obligatoire : si la génération échoue, on annule AVANT le débit de crédits.
+    let sceneUrl: string | null = operation?.background_image_url || null
+    if (operation && !sceneUrl) {
+      sceneUrl = await generateSceneImage(buildScenePrompt(contact, operation), userId, operation.id)
+      await supabaseAdmin
+        .from('operations')
+        .update({ background_image_url: sceneUrl })
+        .eq('id', operation.id)
     }
 
     const prompts = buildDocPrompts(contact, profile, operation)
-    const refImages: string[] = operation?.images?.slice(0, 6) || []
     const results: Record<string, string> = {}
 
     for (const [docType, prompt] of Object.entries(prompts)) {
@@ -62,7 +67,7 @@ export async function POST(req: Request) {
       if (content.type !== 'text') continue
 
       const bodyHtml = sanitizeBody(content.text)
-      const fullHtml = buildHtml({ brand: contact, profile, docType, heroUrl, bodyHtml, refImages })
+      const fullHtml = buildHtml({ brand: contact, profile, docType, sceneUrl, bodyHtml })
       results[docType] = fullHtml
 
       await supabaseAdmin.from('documents').upsert(
@@ -80,7 +85,7 @@ export async function POST(req: Request) {
 
     const deduction = await deductCredits(userId, GENERATION_COST)
 
-    return NextResponse.json({ success: true, documents: results, credits: deduction.remaining, heroUrl })
+    return NextResponse.json({ success: true, documents: results, credits: deduction.remaining, sceneUrl })
   } catch (error) {
     console.error('Generate error:', error)
     const message = error instanceof Error ? error.message : String(error)

@@ -129,6 +129,7 @@ export default function Dashboard() {
             <span className="dash-credits-value">{credits ?? '…'}</span>
             <span className="dash-credits-label">crédits</span>
           </a>
+          <a className="dash-link" onClick={() => window.location.href='/pricing'}>Tarifs</a>
           <a className="dash-link" onClick={() => window.location.href='/dashboard/profil'}>Profil</a>
           <span className="dash-email">{user.email}</span>
           <button className="dash-logout" onClick={handleLogout}>Déconnexion</button>

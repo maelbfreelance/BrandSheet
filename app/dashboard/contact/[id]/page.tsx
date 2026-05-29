@@ -691,7 +691,7 @@ export default function ContactPage() {
             />
             {plan === 'starter' && !isEditing && (
               <div style={{padding:'10px 20px',borderTop:'1px solid #0F2040',fontSize:12,color:'#4A6280',fontStyle:'italic',textAlign:'center'}}>
-                La régénération automatique est réservée aux plans payants. <a onClick={() => window.location.href='/dashboard/credits'} style={{color:'#A8C8FC',cursor:'pointer'}}>Voir les plans →</a>
+                La régénération automatique est réservée aux plans payants. <a onClick={() => window.location.href='/pricing'} style={{color:'#A8C8FC',cursor:'pointer'}}>Voir les plans →</a>
               </div>
             )}
           </div>

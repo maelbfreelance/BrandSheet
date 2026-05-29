@@ -1,10 +1,16 @@
-// Régénération complète d'un document (texte + hero + couleurs/placement réappliqués)
+// Régénération complète d'un document (texte + scène image régénérée)
 // Coût : 2 crédits. Bloqué pour le plan Starter.
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { MODIFICATION_COST, getCredits, deductCredits } from '@/lib/credits'
-import { buildDocPrompts, buildHtml, buildHeroPrompt, generateHeroImage, sanitizeBody } from '@/lib/doc-render'
+import {
+  buildDocPrompts,
+  buildHtml,
+  buildScenePrompt,
+  generateSceneImage,
+  sanitizeBody,
+} from '@/lib/doc-render'
 
 export async function POST(req: Request) {
   const { docId } = await req.json()
@@ -42,16 +48,14 @@ export async function POST(req: Request) {
       operation = op
     }
 
-    // Nouveau hero à chaque régénération (couleurs/placement renouvelés)
-    let heroUrl: string | null = null
+    // Régen : nouvelle scène obligatoire. Si échec, on annule avant débit.
+    let sceneUrl: string | null = operation?.background_image_url || null
     if (operation) {
-      try {
-        heroUrl = await generateHeroImage(buildHeroPrompt(contact, operation), userId, operation.id)
-        await supabaseAdmin.from('operations').update({ hero_image_url: heroUrl }).eq('id', operation.id)
-      } catch (e) {
-        console.error('Hero regen failed:', e)
-        heroUrl = operation.hero_image_url || null
-      }
+      sceneUrl = await generateSceneImage(buildScenePrompt(contact, operation), userId, operation.id)
+      await supabaseAdmin
+        .from('operations')
+        .update({ background_image_url: sceneUrl })
+        .eq('id', operation.id)
     }
 
     const prompts = buildDocPrompts(contact, profile, operation)
@@ -68,8 +72,7 @@ export async function POST(req: Request) {
     if (content.type !== 'text') return NextResponse.json({ error: 'Réponse IA invalide' }, { status: 500 })
 
     const bodyHtml = sanitizeBody(content.text)
-    const refImages: string[] = operation?.images?.slice(0, 6) || []
-    const fullHtml = buildHtml({ brand: contact, profile, docType: doc.type, heroUrl, bodyHtml, refImages })
+    const fullHtml = buildHtml({ brand: contact, profile, docType: doc.type, sceneUrl, bodyHtml })
 
     await supabaseAdmin.from('documents').update({ content: fullHtml, created_at: new Date().toISOString() }).eq('id', docId)
 
