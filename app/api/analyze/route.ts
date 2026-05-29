@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!
@@ -61,7 +61,7 @@ Réponds UNIQUEMENT en JSON valide, sans backticks, sans texte avant ou après :
     const clean = content.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     const brand = JSON.parse(clean)
 
-    await supabase.from('contacts').update({
+    await supabaseAdmin.from('contacts').update({
       brand_colors: brand.brand_colors,
       brand_fonts: brand.brand_fonts,
       brand_tone: brand.brand_tone,
