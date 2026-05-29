@@ -34,6 +34,8 @@ export default function Home() {
         .bs-nav-desktop a{color:#4A6280;font-size:15px;text-decoration:none;font-style:italic;transition:color .2s;}
         .bs-nav-desktop a:hover{color:#F0F4FF;}
         .bs-btn-nav{background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff!important;padding:11px 24px;border-radius:8px;font-size:14px;font-weight:500;font-style:normal;white-space:nowrap;text-decoration:none;}
+        .bs-nav-mobile{display:none;align-items:center;gap:14px;}
+        .bs-nav-mobile a.bs-mobile-link{color:#A8C8FC;font-size:14px;font-style:italic;text-decoration:none;}
         .bs-btn-nav-mobile{display:none;}
         .bs-hero{text-align:center;padding:90px 24px 60px;max-width:820px;margin:0 auto;}
         .bs-badge{display:inline-flex;align-items:center;gap:9px;background:#070F22;border:1px solid #0F2040;border-radius:30px;padding:8px 18px;font-size:13px;color:#4A6280;margin-bottom:36px;font-style:italic;}
@@ -47,6 +49,8 @@ export default function Home() {
         .bs-input{background:#070F22;border:1px solid #0F2040;border-radius:10px;padding:15px 20px;font-size:15px;font-family:'Cormorant Garamond',serif;color:#F0F4FF;width:260px;outline:none;}
         .bs-input::placeholder{color:#1E3050;font-style:italic;}
         .bs-btn{background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;padding:15px 28px;border-radius:10px;font-size:16px;font-weight:500;font-family:'Cormorant Garamond',serif;border:none;cursor:pointer;}
+        .bs-link-pricing{display:inline-block;margin-top:18px;color:#A8C8FC;font-size:15px;font-style:italic;text-decoration:none;border-bottom:1px solid #1E3A5F;padding-bottom:2px;}
+        .bs-link-pricing:hover{color:#F0F4FF;border-bottom-color:#4F8EF7;}
         .bs-hint{font-size:14px;color:#1E3050;margin-top:14px;font-style:italic;}
         .bs-success{font-size:15px;color:#4F8EF7;margin-top:14px;font-style:italic;}
         .bs-mockup-wrap{max-width:680px;margin:60px auto 0;padding:0 24px;}
@@ -95,7 +99,8 @@ export default function Home() {
         @media (max-width:768px){
           .bs-nav{padding:16px 20px;}
           .bs-nav-desktop{display:none;}
-          .bs-btn-nav-mobile{display:block;background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;white-space:nowrap;}
+          .bs-nav-mobile{display:flex;}
+          .bs-btn-nav-mobile{display:block;background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;white-space:nowrap;}
           .bs-hero{padding:60px 20px 40px;}
           .bs-badge{font-size:11px;padding:6px 14px;}
           .bs-h1{font-size:36px;letter-spacing:-0.5px;}
@@ -132,12 +137,15 @@ export default function Home() {
       <nav className="bs-nav">
         <div className="bs-logo">BrandSheet</div>
         <div className="bs-nav-desktop">
-          <a href="#">Fonctionnement</a>
-          <a href="#">Tarifs</a>
+          <a href="#how">Fonctionnement</a>
+          <a href="/pricing">Tarifs</a>
           <a href="#">Blog</a>
           <a href="/login" className="bs-btn-nav">Démarrer gratuitement</a>
         </div>
-        <a href="/login" className="bs-btn-nav-mobile">Commencer →</a>
+        <div className="bs-nav-mobile">
+          <a href="/pricing" className="bs-mobile-link">Tarifs</a>
+          <a href="/login" className="bs-btn-nav-mobile">Commencer →</a>
+        </div>
       </nav>
 
       <div className="bs-hero">
@@ -161,6 +169,7 @@ export default function Home() {
         {status === 'success' && <p className="bs-success">Bienvenue ! On vous contacte très vite 🎉</p>}
         {status === 'Email déjà inscrit' && <p className="bs-success" style={{color:'#F7954F'}}>Cet email est déjà inscrit !</p>}
         <p className="bs-hint">Aucune carte bancaire · Gratuit pour toujours sur 2 contacts</p>
+        <a href="/pricing" className="bs-link-pricing">Voir tous les tarifs →</a>
       </div>
 
       <div className="bs-mockup-wrap">
@@ -193,7 +202,7 @@ export default function Home() {
 
       <div className="bs-sep" style={{marginTop:'80px'}}></div>
 
-      <div className="bs-how">
+      <div id="how" className="bs-how">
         <div className="bs-eyebrow">Comment ça marche</div>
         <h2 className="bs-section-h">Trois étapes.<br /><em>Zéro friction.</em></h2>
         <p className="bs-section-p">Pas de formation, pas de configuration. Votre premier document brandé est prêt en moins d&apos;une minute.</p>
@@ -229,52 +238,52 @@ export default function Home() {
             <div className="bs-plan-mo">/mois · à vie</div>
             <div className="bs-plan-contacts">2 contacts inclus</div>
             <ul className="bs-feats">
+              <li>20 crédits / mois</li>
               <li>Analyse de marque IA</li>
-              <li>Factures brandées PDF</li>
-              <li>Mails de relance</li>
-              <li>Remerciements</li>
+              <li>Génération HTML brandée</li>
+              <li>5 derniers documents conservés</li>
             </ul>
-            <button className="bs-plan-cta bs-cta-outline" onClick={() => window.location.href='/login'}>Commencer</button>
+            <button className="bs-plan-cta bs-cta-outline" onClick={() => window.location.href='/pricing'}>Voir le détail</button>
           </div>
           <div className="bs-plan">
             <div className="bs-plan-tier">Solo</div>
-            <div className="bs-plan-price">7,99€</div>
+            <div className="bs-plan-price">9,99€</div>
             <div className="bs-plan-mo">/mois</div>
             <div className="bs-plan-contacts">15 contacts</div>
             <ul className="bs-feats">
-              <li>Tout le Starter</li>
-              <li>CGV générées</li>
-              <li>Page SAV brandée</li>
-              <li>Devis professionnels</li>
+              <li>150 crédits / mois</li>
+              <li>Régénération de documents</li>
+              <li>CGV &amp; devis générés</li>
+              <li>Conservation 30 jours</li>
             </ul>
-            <button className="bs-plan-cta bs-cta-outline" onClick={() => window.location.href='/login'}>Choisir Solo</button>
+            <button className="bs-plan-cta bs-cta-outline" onClick={() => window.location.href='/pricing'}>Choisir Solo</button>
           </div>
           <div className="bs-plan bs-plan-hot">
             <div className="bs-plan-pop">✦ Plus populaire</div>
             <div className="bs-plan-tier">Studio</div>
-            <div className="bs-plan-price">14,99€</div>
+            <div className="bs-plan-price">19,99€</div>
             <div className="bs-plan-mo">/mois</div>
-            <div className="bs-plan-contacts">75 contacts</div>
+            <div className="bs-plan-contacts">50 contacts</div>
             <ul className="bs-feats">
-              <li>Tout le Solo</li>
-              <li>Relances automatiques</li>
-              <li>Domaine personnalisé</li>
-              <li>Analytics documents</li>
+              <li>600 crédits / mois</li>
+              <li>Toutes les fonctions Solo</li>
+              <li>Conservation 1 an</li>
+              <li>Support prioritaire</li>
             </ul>
-            <button className="bs-plan-cta bs-cta-filled" onClick={() => window.location.href='/login'}>Choisir Studio</button>
+            <button className="bs-plan-cta bs-cta-filled" onClick={() => window.location.href='/pricing'}>Choisir Studio</button>
           </div>
           <div className="bs-plan">
             <div className="bs-plan-tier">Agency</div>
-            <div className="bs-plan-price">34,99€</div>
+            <div className="bs-plan-price">49,99€</div>
             <div className="bs-plan-mo">/mois</div>
             <div className="bs-plan-contacts">Contacts illimités</div>
             <ul className="bs-feats">
-              <li>Tout le Studio</li>
-              <li>Multi-utilisateurs</li>
-              <li>White label complet</li>
-              <li>Accès API</li>
+              <li>2 000 crédits / mois</li>
+              <li>Conservation illimitée</li>
+              <li>Toutes les fonctions Studio</li>
+              <li>Accompagnement dédié</li>
             </ul>
-            <button className="bs-plan-cta bs-cta-outline" onClick={() => window.location.href='/login'}>Choisir Agency</button>
+            <button className="bs-plan-cta bs-cta-outline" onClick={() => window.location.href='/pricing'}>Choisir Agency</button>
           </div>
         </div>
       </div>
