@@ -1,7 +1,6 @@
 // v3 — HTML output + hero image via gpt-image-1
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { supabase } from '@/lib/supabase'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { GENERATION_COST, getCredits, deductCredits } from '@/lib/credits'
 import { buildDocPrompts, buildHtml, buildHeroPrompt, generateHeroImage, sanitizeBody } from '@/lib/doc-render'
@@ -16,8 +15,9 @@ export async function POST(req: Request) {
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
   try {
-    const { data: contact } = await supabase.from('contacts').select('*').eq('id', contactId).single()
-    if (!contact) return NextResponse.json({ error: 'Contact introuvable' }, { status: 404 })
+    const { data: contact, error: contactErr } = await supabaseAdmin.from('contacts').select('*').eq('id', contactId).maybeSingle()
+    if (contactErr) return NextResponse.json({ error: 'Erreur lecture contact', detail: contactErr.message }, { status: 500 })
+    if (!contact) return NextResponse.json({ error: 'Contact introuvable', detail: `id=${contactId}` }, { status: 404 })
 
     let operation: any = null
     if (operationId) {
