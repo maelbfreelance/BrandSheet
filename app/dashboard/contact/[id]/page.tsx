@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
+import { PLANS, PlanId, applyRetention } from '@/lib/plans'
 
 export default function ContactPage() {
   const { id } = useParams()
@@ -21,6 +22,9 @@ export default function ContactPage() {
   const [opForm, setOpForm] = useState<{ name: string; description: string; files: File[] }>({ name: '', description: '', files: [] })
   const [opSaving, setOpSaving] = useState(false)
   const [opError, setOpError] = useState<string | null>(null)
+  const [deleteOpModal, setDeleteOpModal] = useState<string | null>(null)
+  const [deleteOpConfirmed, setDeleteOpConfirmed] = useState(false)
+  const [plan, setPlan] = useState<PlanId>('starter')
 
   const loadOperations = async () => {
     const { data } = await supabase.from('operations').select('*').eq('contact_id', id).order('created_at', { ascending: false })
@@ -43,8 +47,47 @@ export default function ContactPage() {
       supabase.from('user_credits').select('credits').eq('user_id', data.user.id).maybeSingle().then(({ data: c }) => {
         setCredits(c?.credits ?? 0)
       })
+      supabase.from('profiles').select('plan').eq('user_id', data.user.id).maybeSingle().then(({ data: p }) => {
+        if (p?.plan && p.plan in PLANS) setPlan(p.plan as PlanId)
+      })
     })
   }, [id])
+
+  const handleDeleteOperation = async () => {
+    if (!deleteOpConfirmed || !deleteOpModal) return
+    const opId = deleteOpModal
+    await supabase.from('operations').delete().eq('id', opId)
+    if (selectedOpId === opId) setSelectedOpId(null)
+    setDeleteOpModal(null)
+    setDeleteOpConfirmed(false)
+    await loadOperations()
+    const { data: refreshed } = await supabase.from('documents').select('*').eq('contact_id', id).order('created_at', { ascending: false })
+    if (refreshed) setDocs(refreshed)
+  }
+
+  const docTypeLabels: Record<string, string> = {
+    bienvenue: 'Mail bienvenue',
+    remerciement: 'Remerciement',
+    avis: 'Demande avis',
+    facture: 'Facture',
+    devis: 'Devis',
+    cgv: 'CGV',
+  }
+
+  const handleDownloadDoc = (doc: any) => {
+    const blob = new Blob([doc.content || ''], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const opName = operations.find(o => o.id === doc.operation_id)?.name || 'sans-operation'
+    const slug = `${opName}-${doc.type}-${new Date(doc.created_at).toISOString().slice(0, 10)}`
+      .toLowerCase().replace(/[^a-z0-9-]+/g, '-')
+    a.href = url
+    a.download = `${slug}.txt`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
 
   const handleCreateOperation = async () => {
     if (!opForm.name.trim()) {
@@ -316,6 +359,7 @@ export default function ContactPage() {
                     key={op.id}
                     className={`doc-item${selected ? ' doc-item-selected' : ''}`}
                     onClick={() => setSelectedOpId(selected ? null : op.id)}
+                    style={{position:'relative',paddingRight:36}}
                   >
                     <div className="doc-item-left">
                       <span className="doc-icon">◈</span>
@@ -325,34 +369,67 @@ export default function ContactPage() {
                       </div>
                     </div>
                     <span className="doc-arrow">{selected ? '✓' : '→'}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeleteOpConfirmed(false); setDeleteOpModal(op.id) }}
+                      title="Supprimer l'opération"
+                      style={{position:'absolute',top:6,right:6,background:'transparent',border:'none',color:'#1E3050',cursor:'pointer',fontSize:14,lineHeight:1,padding:4}}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#dc2626')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = '#1E3050')}
+                    >✕</button>
                   </div>
                 )
               })
             )}
           </div>
 
-          <div className="panel">
-            <div className="panel-h">
-              {selectedOpId
-                ? `Docs — ${operations.find(o => o.id === selectedOpId)?.name || 'opération'}`
-                : 'Docs — sans opération'}
-            </div>
-            {docTypes.map((dt) => {
-              const doc = docs.find(d => d.type === dt.key && (d.operation_id ?? null) === (selectedOpId ?? null))
-              return (
-                <div key={dt.key} className="doc-item">
-                  <div className="doc-item-left">
-                    <span className="doc-icon">{dt.icon}</span>
-                    <div>
-                      <div className="doc-label">{dt.label}</div>
-                      <div className="doc-status">{doc ? '✓ Généré' : 'Non généré'}</div>
+          {selectedOpId ? (
+            <div className="panel">
+              <div className="panel-h">Docs — {operations.find(o => o.id === selectedOpId)?.name || 'opération'}</div>
+              {docTypes.map((dt) => {
+                const doc = docs.find(d => d.type === dt.key && d.operation_id === selectedOpId)
+                return (
+                  <div key={dt.key} className="doc-item" onClick={() => doc && handleDownloadDoc(doc)} style={{cursor: doc ? 'pointer' : 'default'}}>
+                    <div className="doc-item-left">
+                      <span className="doc-icon">{dt.icon}</span>
+                      <div>
+                        <div className="doc-label">{dt.label}</div>
+                        <div className="doc-status">{doc ? '✓ Téléchargeable' : 'Non généré'}</div>
+                      </div>
                     </div>
+                    <span className="doc-arrow">{doc ? '↓' : '—'}</span>
                   </div>
-                  <span className="doc-arrow">→</span>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="panel">
+              <div className="panel-h">Historique de génération</div>
+              <p style={{fontSize:11,color:'#4A6280',fontStyle:'italic',marginBottom:10,marginTop:-4}}>
+                Plan <strong style={{color:'#A8C8FC'}}>{PLANS[plan].label}</strong> · conservation {PLANS[plan].retentionLabel}
+              </p>
+              {(() => {
+                const visible = applyRetention(docs.filter(d => d.operation_id), plan)
+                if (visible.length === 0) {
+                  return <p style={{fontSize:12,color:'#1E3050',fontStyle:'italic'}}>Aucun document. Sélectionnez une opération pour générer.</p>
+                }
+                return visible.map((doc) => {
+                  const opName = operations.find(o => o.id === doc.operation_id)?.name || '—'
+                  return (
+                    <div key={doc.id} className="doc-item" onClick={() => handleDownloadDoc(doc)} style={{cursor:'pointer'}}>
+                      <div className="doc-item-left">
+                        <span className="doc-icon">↓</span>
+                        <div>
+                          <div className="doc-label">{docTypeLabels[doc.type] || doc.type}</div>
+                          <div className="doc-status">{opName} · {new Date(doc.created_at).toLocaleDateString('fr-FR')}</div>
+                        </div>
+                      </div>
+                      <span className="doc-arrow">↓</span>
+                    </div>
+                  )
+                })
+              })()}
+            </div>
+          )}
         </div>
 
         <div className="col">
@@ -443,14 +520,17 @@ export default function ContactPage() {
                   <div className="success-msg">✦ Tous les documents ont été générés !</div>
                 )}
 
-                <button className="generate-btn" onClick={handleGenerate} disabled={generating}>
-                  {generating ? '⏳ Génération en cours...' : '✦ Générer tous les documents →'}
+                <button className="generate-btn" onClick={handleGenerate} disabled={generating || !selectedOpId}>
+                  {generating
+                    ? '⏳ Génération en cours...'
+                    : selectedOpId
+                      ? '✦ Générer tous les documents →'
+                      : 'Sélectionnez une opération'}
                 </button>
                 <p className="cost-hint">
                   {selectedOpId
-                    ? <>Pour l'opération <strong style={{color:'#A8C8FC'}}>{operations.find(o => o.id === selectedOpId)?.name}</strong> · </>
-                    : <>Sans opération · </>}
-                  Coût : 10 crédits {typeof credits === 'number' && <>· solde {credits}</>}
+                    ? <>Pour l'opération <strong style={{color:'#A8C8FC'}}>{operations.find(o => o.id === selectedOpId)?.name}</strong> · Coût : 10 crédits {typeof credits === 'number' && <>· solde {credits}</>}</>
+                    : <>Cliquez une opération dans la barre latérale pour pouvoir générer.</>}
                 </p>
               </div>
             ) : (
@@ -513,6 +593,31 @@ export default function ContactPage() {
               <button className="modal-cancel" onClick={() => setShowOpForm(false)} disabled={opSaving}>Annuler</button>
               <button className="modal-confirm" onClick={handleCreateOperation} disabled={opSaving}>
                 {opSaving ? 'Création...' : 'Créer l\'opération →'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteOpModal && (
+        <div className="modal-overlay" onClick={() => setDeleteOpModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-h">Supprimer cette opération ?</h2>
+            <p className="modal-p" style={{textAlign:'left',color:'#F7954F',padding:12,background:'#1A0F08',borderRadius:8,border:'1px solid #3A2010',marginBottom:20}}>
+              ⚠️ Action irréversible. Tous les documents générés pour cette opération seront définitivement supprimés.
+            </p>
+            <label style={{display:'flex',alignItems:'center',gap:10,margin:'12px 0',cursor:'pointer',fontSize:15,color:'#6B84AA',fontStyle:'italic'}}>
+              <input type="checkbox" checked={deleteOpConfirmed} onChange={(e) => setDeleteOpConfirmed(e.target.checked)} style={{width:16,height:16,cursor:'pointer'}} />
+              Je comprends que ces données ne seront pas récupérables
+            </label>
+            <div className="modal-actions">
+              <button className="modal-cancel" onClick={() => setDeleteOpModal(null)}>Annuler</button>
+              <button
+                onClick={handleDeleteOperation}
+                disabled={!deleteOpConfirmed}
+                style={{background: deleteOpConfirmed ? '#dc2626' : '#1E3050', color:'#fff', cursor: deleteOpConfirmed ? 'pointer' : 'not-allowed', padding:'11px 24px',borderRadius:8,fontFamily:"'Cormorant Garamond',serif",fontSize:15,fontStyle:'italic',border:'none'}}
+              >
+                Supprimer définitivement
               </button>
             </div>
           </div>

@@ -26,6 +26,10 @@ create table if not exists profiles (
   updated_at timestamptz default now()
 );
 
+-- Plan utilisateur : starter (gratuit) / solo / studio / agency
+-- Pilote la rétention des documents générés et le coût de modification.
+alter table profiles add column if not exists plan text not null default 'starter';
+
 -- 3) Trigger : 20 crédits à l'inscription
 create or replace function init_user_credits()
 returns trigger
