@@ -78,6 +78,7 @@ Réponds UNIQUEMENT en JSON valide, sans backticks, sans texte avant ou après :
 
   } catch (error) {
     console.error('Analyze error:', error)
-    return NextResponse.json({ error: 'Erreur analyse' }, { status: 500 })
+    const message = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: 'Erreur analyse', detail: message }, { status: 500 })
   }
 }
