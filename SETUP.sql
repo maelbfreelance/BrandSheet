@@ -50,28 +50,85 @@ insert into user_credits (user_id, credits)
 select id, 20 from auth.users
 on conflict (user_id) do nothing;
 
--- 4) Bucket Storage pour les logos (public en lecture)
+-- =========================================================
+-- 4) Row Level Security
+-- =========================================================
+-- Accès uniquement aux utilisateurs connectés, sur leurs propres lignes.
+-- Les opérations serveur (déduction de crédits dans /api/gen) doivent
+-- utiliser la clé SUPABASE_SERVICE_ROLE_KEY qui bypass RLS — sinon
+-- elles seront bloquées.
+
+alter table user_credits enable row level security;
+alter table profiles enable row level security;
+
+-- user_credits : un utilisateur lit/modifie uniquement sa propre ligne
+drop policy if exists "user_credits_select_own" on user_credits;
+create policy "user_credits_select_own" on user_credits
+  for select to authenticated
+  using (auth.uid() = user_id);
+
+drop policy if exists "user_credits_insert_own" on user_credits;
+create policy "user_credits_insert_own" on user_credits
+  for insert to authenticated
+  with check (auth.uid() = user_id);
+
+drop policy if exists "user_credits_update_own" on user_credits;
+create policy "user_credits_update_own" on user_credits
+  for update to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- profiles : un utilisateur lit/écrit uniquement sa propre fiche
+drop policy if exists "profiles_select_own" on profiles;
+create policy "profiles_select_own" on profiles
+  for select to authenticated
+  using (auth.uid() = user_id);
+
+drop policy if exists "profiles_insert_own" on profiles;
+create policy "profiles_insert_own" on profiles
+  for insert to authenticated
+  with check (auth.uid() = user_id);
+
+drop policy if exists "profiles_update_own" on profiles;
+create policy "profiles_update_own" on profiles
+  for update to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- =========================================================
+-- 5) Bucket Storage pour les logos (public en lecture)
+-- =========================================================
 insert into storage.buckets (id, name, public)
 values ('logos', 'logos', true)
 on conflict (id) do nothing;
 
--- Policies storage (lecture publique, écriture par utilisateur authentifié)
-do $$
-begin
-  if not exists (select 1 from pg_policies where policyname = 'logos_public_read') then
-    create policy "logos_public_read" on storage.objects
-      for select using (bucket_id = 'logos');
-  end if;
-  if not exists (select 1 from pg_policies where policyname = 'logos_authenticated_write') then
-    create policy "logos_authenticated_write" on storage.objects
-      for insert with check (bucket_id = 'logos' and auth.role() = 'authenticated');
-  end if;
-  if not exists (select 1 from pg_policies where policyname = 'logos_authenticated_update') then
-    create policy "logos_authenticated_update" on storage.objects
-      for update using (bucket_id = 'logos' and auth.role() = 'authenticated');
-  end if;
-  if not exists (select 1 from pg_policies where policyname = 'logos_authenticated_delete') then
-    create policy "logos_authenticated_delete" on storage.objects
-      for delete using (bucket_id = 'logos' and auth.role() = 'authenticated');
-  end if;
-end$$;
+-- Lecture publique (les logos sont affichés sur les docs générés)
+drop policy if exists "logos_public_read" on storage.objects;
+create policy "logos_public_read" on storage.objects
+  for select
+  using (bucket_id = 'logos');
+
+-- Écriture : utilisateur authentifié, uniquement dans son propre dossier (préfixe = user_id)
+drop policy if exists "logos_authenticated_write" on storage.objects;
+create policy "logos_authenticated_write" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "logos_authenticated_update" on storage.objects;
+create policy "logos_authenticated_update" on storage.objects
+  for update to authenticated
+  using (
+    bucket_id = 'logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "logos_authenticated_delete" on storage.objects;
+create policy "logos_authenticated_delete" on storage.objects
+  for delete to authenticated
+  using (
+    bucket_id = 'logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );

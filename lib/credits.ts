@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabaseAdmin as supabase } from './supabase-admin'
 
 export const GENERATION_COST = 10
 export const MODIFICATION_COST = 2
