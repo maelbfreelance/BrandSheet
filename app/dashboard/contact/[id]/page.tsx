@@ -13,16 +13,24 @@ export default function ContactPage() {
   const [showMoreData, setShowMoreData] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [generated, setGenerated] = useState(false)
+  const [credits, setCredits] = useState<number | null>(null)
+  const [showNoCredits, setShowNoCredits] = useState(false)
 
   useEffect(() => {
     supabase.from('contacts').select('*').eq('id', id).single().then(({ data }) => {
       if (data) {
         setContact(data)
-        if (data.brand_colors) setBrand(data)
+        if (data.brand_colors && data.brand_colors.length > 0) setBrand(data)
       }
     })
     supabase.from('documents').select('*').eq('contact_id', id).order('created_at', { ascending: false }).then(({ data }) => {
       if (data) setDocs(data)
+    })
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return
+      supabase.from('user_credits').select('credits').eq('user_id', data.user.id).maybeSingle().then(({ data: c }) => {
+        setCredits(c?.credits ?? 0)
+      })
     })
   }, [id])
 
@@ -49,6 +57,10 @@ export default function ContactPage() {
   }
 
   const handleGenerate = async () => {
+    if ((credits ?? 0) < 10) {
+      setShowNoCredits(true)
+      return
+    }
     setGenerating(true)
     const res = await fetch('https://www.brandsheet.fr/api/gen', {
       method: 'POST',
@@ -56,8 +68,15 @@ export default function ContactPage() {
       body: JSON.stringify({ contactId: id })
     })
     const data = await res.json()
+    if (res.status === 402) {
+      setCredits(data.credits ?? 0)
+      setShowNoCredits(true)
+      setGenerating(false)
+      return
+    }
     if (data.success) {
       setGenerated(true)
+      if (typeof data.credits === 'number') setCredits(data.credits)
       const { data: newDocs } = await supabase
         .from('documents')
         .select('*')
@@ -133,6 +152,7 @@ export default function ContactPage() {
         .info-value{font-size:14px;font-weight:500;}
         .generate-btn{width:100%;padding:15px;border-radius:12px;background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;font-family:'Playfair Display',serif;font-size:16px;font-style:italic;border:none;cursor:pointer;margin-top:20px;}
         .generate-btn:disabled{opacity:0.6;cursor:not-allowed;}
+        .cost-hint{margin-top:8px;text-align:center;font-size:12px;color:#4A6280;font-style:italic;}
         .more-btn{background:transparent;border:1px solid #0F1E3A;color:#4A6280;padding:8px 16px;border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:13px;font-style:italic;cursor:pointer;margin-top:14px;width:100%;}
         .more-btn:hover{border-color:#4A6280;color:#F0F4FF;}
         .more-data{margin-top:14px;background:#050B18;border-radius:10px;padding:14px;}
@@ -320,6 +340,7 @@ export default function ContactPage() {
                 <button className="generate-btn" onClick={handleGenerate} disabled={generating}>
                   {generating ? '⏳ Génération en cours...' : '✦ Générer tous les documents →'}
                 </button>
+                <p className="cost-hint">Coût : 10 crédits {typeof credits === 'number' && <>· solde {credits}</>}</p>
               </div>
             ) : (
               <>
@@ -340,6 +361,22 @@ export default function ContactPage() {
             <div className="modal-actions">
               <button className="modal-cancel" onClick={() => setShowReanalyzeConfirm(false)}>Annuler</button>
               <button className="modal-confirm" onClick={handleAnalyze}>Confirmer →</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showNoCredits && (
+        <div className="modal-overlay" onClick={() => setShowNoCredits(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-h">Crédits insuffisants</h2>
+            <p className="modal-p">
+              Il vous reste <strong>{credits ?? 0} crédits</strong>.<br />
+              Une génération complète en coûte 10. Rechargez votre solde pour continuer.
+            </p>
+            <div className="modal-actions">
+              <button className="modal-cancel" onClick={() => setShowNoCredits(false)}>Plus tard</button>
+              <button className="modal-confirm" onClick={() => window.location.href='/dashboard/credits'}>Recharger →</button>
             </div>
           </div>
         </div>

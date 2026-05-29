@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [contacts, setContacts] = useState<any[]>([])
+  const [credits, setCredits] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name: '', url: '' })
@@ -17,6 +18,7 @@ export default function Dashboard() {
       else {
         setUser(data.user)
         loadContacts(data.user.id)
+        loadCredits(data.user.id)
       }
     })
   }, [])
@@ -24,6 +26,15 @@ export default function Dashboard() {
   const loadContacts = async (userId: string) => {
     const { data } = await supabase.from('contacts').select('*').eq('user_id', userId).order('created_at', { ascending: false })
     if (data) setContacts(data)
+  }
+
+  const loadCredits = async (userId: string) => {
+    const { data } = await supabase.from('user_credits').select('credits').eq('user_id', userId).maybeSingle()
+    if (data) setCredits(data.credits)
+    else {
+      await supabase.from('user_credits').insert({ user_id: userId, credits: 20 })
+      setCredits(20)
+    }
   }
 
   const handleAdd = async () => {
@@ -69,6 +80,13 @@ export default function Dashboard() {
         .dash-email{font-size:14px;color:#4A6280;font-style:italic;}
         .dash-logout{font-size:14px;color:#1E3050;font-style:italic;cursor:pointer;background:none;border:none;font-family:'Cormorant Garamond',serif;}
         .dash-logout:hover{color:#F0F4FF;}
+        .dash-credits{display:flex;align-items:center;gap:6px;background:#0D1B35;border:1px solid #0F2040;border-radius:20px;padding:6px 14px;cursor:pointer;transition:border-color .2s;}
+        .dash-credits:hover{border-color:#4F8EF7;}
+        .dash-credits-icon{color:#4F8EF7;font-size:13px;}
+        .dash-credits-value{font-family:'Playfair Display',serif;font-weight:700;font-size:14px;color:#F0F4FF;}
+        .dash-credits-label{font-size:13px;color:#4A6280;font-style:italic;}
+        .dash-link{font-size:14px;color:#4A6280;font-style:italic;cursor:pointer;}
+        .dash-link:hover{color:#F0F4FF;}
         .dash-body{max-width:900px;margin:0 auto;padding:60px 24px;}
         .dash-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:40px;}
         .dash-welcome{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;}
@@ -106,6 +124,12 @@ export default function Dashboard() {
       <nav className="dash-nav">
         <div className="dash-logo">BrandSheet</div>
         <div className="dash-user">
+          <a className="dash-credits" onClick={() => window.location.href='/dashboard/credits'}>
+            <span className="dash-credits-icon">✦</span>
+            <span className="dash-credits-value">{credits ?? '…'}</span>
+            <span className="dash-credits-label">crédits</span>
+          </a>
+          <a className="dash-link" onClick={() => window.location.href='/dashboard/profil'}>Profil</a>
           <span className="dash-email">{user.email}</span>
           <button className="dash-logout" onClick={handleLogout}>Déconnexion</button>
         </div>
