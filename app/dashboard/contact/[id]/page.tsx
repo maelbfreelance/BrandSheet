@@ -92,6 +92,7 @@ export default function ContactPage() {
   }
 
   const [viewerDoc, setViewerDoc] = useState<any>(null)
+  const [historyFullscreen, setHistoryFullscreen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isSavingDoc, setIsSavingDoc] = useState(false)
   const [isRegen, setIsRegen] = useState(false)
@@ -243,7 +244,7 @@ export default function ContactPage() {
       return
     }
     setGenerating(true)
-    const res = await fetch('https://www.brandsheet.fr/api/gen', {
+    const res = await fetch('/api/gen', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contactId: id, operationId: selectedOpId })
@@ -269,15 +270,6 @@ export default function ContactPage() {
   }
 
   if (!contact) return null
-
-  const docTypes = [
-    { key: 'bienvenue', label: 'Mail bienvenue', icon: '✉' },
-    { key: 'remerciement', label: 'Remerciement', icon: '✦' },
-    { key: 'avis', label: 'Demande avis', icon: '★' },
-    { key: 'facture', label: 'Facture', icon: '◈' },
-    { key: 'devis', label: 'Devis', icon: '◇' },
-    { key: 'cgv', label: 'CGV', icon: '⊞' },
-  ]
 
   return (
     <>
@@ -456,54 +448,44 @@ export default function ContactPage() {
             )}
           </div>
 
-          {selectedOpId ? (
-            <div className="panel">
-              <div className="panel-h">Docs — {operations.find(o => o.id === selectedOpId)?.name || 'opération'}</div>
-              {docTypes.map((dt) => {
-                const doc = docs.find(d => d.type === dt.key && d.operation_id === selectedOpId)
+          <div className="panel">
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+              <div className="panel-h" style={{marginBottom:0}}>Historique</div>
+              {docs.filter(d => d.operation_id).length > 0 && (
+                <button
+                  onClick={() => setHistoryFullscreen(true)}
+                  title="Voir en plein écran"
+                  style={{background:'transparent',border:'none',color:'#4A6280',cursor:'pointer',fontSize:13,fontStyle:'italic',fontFamily:"'Cormorant Garamond',serif",padding:0}}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#A8C8FC')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#4A6280')}
+                >⛶ Plein écran</button>
+              )}
+            </div>
+            <p style={{fontSize:11,color:'#4A6280',fontStyle:'italic',marginBottom:10}}>
+              Plan <strong style={{color:'#A8C8FC'}}>{PLANS[plan].label}</strong> · conservation {PLANS[plan].retentionLabel}
+            </p>
+            {(() => {
+              const visible = applyRetention(docs.filter(d => d.operation_id), plan)
+              if (visible.length === 0) {
+                return <p style={{fontSize:12,color:'#1E3050',fontStyle:'italic'}}>Aucun document généré pour ce contact.</p>
+              }
+              return visible.map((doc) => {
+                const opName = operations.find(o => o.id === doc.operation_id)?.name || '—'
                 return (
-                  <div key={dt.key} className="doc-item" onClick={() => doc && openViewer(doc)} style={{cursor: doc ? 'pointer' : 'default'}}>
+                  <div key={doc.id} className="doc-item" onClick={() => openViewer(doc)} style={{cursor:'pointer'}}>
                     <div className="doc-item-left">
-                      <span className="doc-icon">{dt.icon}</span>
+                      <span className="doc-icon">◈</span>
                       <div>
-                        <div className="doc-label">{dt.label}</div>
-                        <div className="doc-status">{doc ? '✓ Téléchargeable' : 'Non généré'}</div>
+                        <div className="doc-label">{docTypeLabels[doc.type] || doc.type}</div>
+                        <div className="doc-status">{opName} · {new Date(doc.created_at).toLocaleDateString('fr-FR')}</div>
                       </div>
                     </div>
-                    <span className="doc-arrow">{doc ? '↓' : '—'}</span>
+                    <span className="doc-arrow">→</span>
                   </div>
                 )
-              })}
-            </div>
-          ) : (
-            <div className="panel">
-              <div className="panel-h">Historique de génération</div>
-              <p style={{fontSize:11,color:'#4A6280',fontStyle:'italic',marginBottom:10,marginTop:-4}}>
-                Plan <strong style={{color:'#A8C8FC'}}>{PLANS[plan].label}</strong> · conservation {PLANS[plan].retentionLabel}
-              </p>
-              {(() => {
-                const visible = applyRetention(docs.filter(d => d.operation_id), plan)
-                if (visible.length === 0) {
-                  return <p style={{fontSize:12,color:'#1E3050',fontStyle:'italic'}}>Aucun document. Sélectionnez une opération pour générer.</p>
-                }
-                return visible.map((doc) => {
-                  const opName = operations.find(o => o.id === doc.operation_id)?.name || '—'
-                  return (
-                    <div key={doc.id} className="doc-item" onClick={() => openViewer(doc)} style={{cursor:'pointer'}}>
-                      <div className="doc-item-left">
-                        <span className="doc-icon">◈</span>
-                        <div>
-                          <div className="doc-label">{docTypeLabels[doc.type] || doc.type}</div>
-                          <div className="doc-status">{opName} · {new Date(doc.created_at).toLocaleDateString('fr-FR')}</div>
-                        </div>
-                      </div>
-                      <span className="doc-arrow">→</span>
-                    </div>
-                  )
-                })
-              })()}
-            </div>
-          )}
+              })
+            })()}
+          </div>
         </div>
 
         <div className="col">
@@ -712,6 +694,53 @@ export default function ContactPage() {
                 La régénération automatique est réservée aux plans payants. <a onClick={() => window.location.href='/dashboard/credits'} style={{color:'#A8C8FC',cursor:'pointer'}}>Voir les plans →</a>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {historyFullscreen && (
+        <div style={{position:'fixed',inset:0,background:'#050B18',zIndex:200,display:'flex',flexDirection:'column'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 32px',borderBottom:'1px solid #0F2040'}}>
+            <div>
+              <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontWeight:700,margin:0}}>
+                Historique — <span style={{fontStyle:'italic',background:'linear-gradient(135deg,#4F8EF7,#7C3AED)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>{contact.brand_name || contact.name}</span>
+              </h2>
+              <p style={{fontSize:13,color:'#4A6280',fontStyle:'italic',marginTop:4}}>
+                Plan <strong style={{color:'#A8C8FC'}}>{PLANS[plan].label}</strong> · conservation {PLANS[plan].retentionLabel}
+              </p>
+            </div>
+            <button onClick={() => setHistoryFullscreen(false)} style={{background:'transparent',border:'1px solid #0F2040',color:'#4A6280',padding:'10px 18px',borderRadius:8,fontFamily:"'Cormorant Garamond',serif",fontSize:15,fontStyle:'italic',cursor:'pointer'}}>✕ Fermer</button>
+          </div>
+          <div style={{flex:1,overflow:'auto',padding:32}}>
+            {(() => {
+              const visible = applyRetention(docs.filter(d => d.operation_id), plan)
+              if (visible.length === 0) {
+                return <p style={{fontSize:14,color:'#1E3050',fontStyle:'italic',textAlign:'center',marginTop:80}}>Aucun document généré pour ce contact.</p>
+              }
+              return (
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:16,maxWidth:1200,margin:'0 auto'}}>
+                  {visible.map((doc) => {
+                    const opName = operations.find(o => o.id === doc.operation_id)?.name || '—'
+                    return (
+                      <div
+                        key={doc.id}
+                        onClick={() => { setHistoryFullscreen(false); openViewer(doc) }}
+                        style={{background:'#070F22',border:'1px solid #0F2040',borderRadius:14,padding:20,cursor:'pointer',transition:'border-color .2s'}}
+                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#4F8EF7')}
+                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#0F2040')}
+                      >
+                        <div style={{fontFamily:"'Playfair Display',serif",fontSize:17,fontWeight:700,marginBottom:6}}>{docTypeLabels[doc.type] || doc.type}</div>
+                        <div style={{fontSize:13,color:'#4A6280',fontStyle:'italic',marginBottom:14}}>{opName}</div>
+                        <div style={{fontSize:12,color:'#1E3050',display:'flex',justifyContent:'space-between'}}>
+                          <span>{new Date(doc.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' })}</span>
+                          <span style={{color:'#4F8EF7'}}>→ Ouvrir</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}
