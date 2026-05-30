@@ -8,16 +8,32 @@ explicite (rien ne casse, mais aucun paiement ne passe).
 
 Dashboard Stripe → **Products** → créer 4 produits :
 
-| Produit | Prix mensuel | Prix annuel | Type |
-|---------|--------------|-------------|------|
-| BrandSheet Solo | 9,99 €/mois | 83,88 €/an (≈ 6,99 €/mois) | Recurring |
-| BrandSheet Studio | 19,99 €/mois | 167,88 €/an (≈ 13,99 €/mois) | Recurring |
-| BrandSheet Agency | 49,99 €/mois | 419,88 €/an (≈ 34,99 €/mois) | Recurring |
-| Pack crédits Starter | 9 € (one-shot) | — | One-time |
-| Pack crédits Pro | 19 € (one-shot) | — | One-time |
-| Pack crédits Studio | 39 € (one-shot) | — | One-time |
+### Abonnements (Recurring)
 
-Chaque abonnement → **2 prix** (mensuel + annuel). Chaque pack → **1 prix** unique.
+| Produit | Prix mensuel | Prix annuel |
+|---------|--------------|-------------|
+| BrandSheet Solo | 9,99 €/mois | 83,88 €/an (≈ 6,99 €/mois) |
+| BrandSheet Studio | 19,99 €/mois | 167,88 €/an (≈ 13,99 €/mois) |
+| BrandSheet Agency | 49,99 €/mois | 419,88 €/an (≈ 34,99 €/mois) |
+
+Chaque abonnement → **2 prix** (mensuel + annuel).
+
+### Packs de crédits (One-time)
+
+8 packs, prix par crédit calibré pour rester plus cher que les abonnements (l'abo doit toujours être l'option la moins chère au crédit).
+
+| Produit | Prix one-shot | Crédits | crédits/€ |
+|---------|---------------|---------|-----------|
+| Pack 10 €  | 9,99 €  | 100  | 10,0 |
+| Pack 20 €  | 19,99 € | 215  | 10,8 |
+| Pack 30 €  | 29,99 € | 335  | 11,2 |
+| Pack 40 €  | 39,99 € | 465  | 11,6 |
+| Pack 50 €  | 49,99 € | 600  | 12,0 |
+| Pack 60 €  | 59,99 € | 740  | 12,3 |
+| Pack 80 €  | 79,99 € | 1020 | 12,8 |
+| Pack 100 € | 99,99 € | 1300 | 13,0 |
+
+Référence : plan Solo = 150c / 9,99 € = 15 c/€. Tous les packs sont en-dessous (au pire 87% de la valeur du plan Solo au crédit).
 
 Note le **price ID** de chaque prix (commence par `price_…`).
 
@@ -38,10 +54,15 @@ STRIPE_PRICE_STUDIO_ANNUAL=price_...
 STRIPE_PRICE_AGENCY_MONTHLY=price_...
 STRIPE_PRICE_AGENCY_ANNUAL=price_...
 
-# Price IDs — packs de crédits one-shot
-STRIPE_PRICE_PACK_STARTER=price_...
-STRIPE_PRICE_PACK_PRO=price_...
-STRIPE_PRICE_PACK_STUDIO=price_...
+# Price IDs — packs de crédits one-shot (8 packs)
+STRIPE_PRICE_PACK_P10=price_...   # Pack 10€  → 100 crédits
+STRIPE_PRICE_PACK_P20=price_...   # Pack 20€  → 215 crédits
+STRIPE_PRICE_PACK_P30=price_...   # Pack 30€  → 335 crédits
+STRIPE_PRICE_PACK_P40=price_...   # Pack 40€  → 465 crédits
+STRIPE_PRICE_PACK_P50=price_...   # Pack 50€  → 600 crédits
+STRIPE_PRICE_PACK_P60=price_...   # Pack 60€  → 740 crédits
+STRIPE_PRICE_PACK_P80=price_...   # Pack 80€  → 1020 crédits
+STRIPE_PRICE_PACK_P100=price_...  # Pack 100€ → 1300 crédits
 
 # Optionnel — URL publique pour les success_url / cancel_url
 NEXT_PUBLIC_SITE_URL=https://brandsheet.fr

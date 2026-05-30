@@ -41,7 +41,13 @@ export function getStripePriceId(planId: PlanId, cycle: BillingCycle): string | 
     : process.env[`STRIPE_PRICE_${upper}_MONTHLY`]
 }
 
-/** Packs de crédits one-shot (page /dashboard/credits). */
+/** Packs de crédits one-shot (page /dashboard/credits).
+ *
+ *  Progression des crédits/€ calibrée pour que le prix unitaire d'un crédit
+ *  acheté en pack reste TOUJOURS supérieur au prix unitaire d'un crédit fourni
+ *  par un abonnement — l'objectif est que l'abonnement reste l'option la plus
+ *  économique. Référence basse (plan Solo) : 150 c / 9,99 € = 15,02 c/€.
+ *  Plus gros pack (99,99 €) : 1300 c → 13 c/€ (+15% au crédit vs Solo). */
 export type CreditPack = {
   id: string
   label: string
@@ -50,9 +56,14 @@ export type CreditPack = {
   tag?: string
 }
 export const CREDIT_PACKS: CreditPack[] = [
-  { id: 'starter', label: 'Starter', credits: 50, price: 9 },
-  { id: 'pro', label: 'Pro', credits: 150, price: 19, tag: 'Populaire' },
-  { id: 'studio', label: 'Studio', credits: 400, price: 39 },
+  { id: 'p10',  label: 'Pack 10€',  credits: 100,  price: 9.99 },
+  { id: 'p20',  label: 'Pack 20€',  credits: 215,  price: 19.99, tag: 'Populaire' },
+  { id: 'p30',  label: 'Pack 30€',  credits: 335,  price: 29.99 },
+  { id: 'p40',  label: 'Pack 40€',  credits: 465,  price: 39.99 },
+  { id: 'p50',  label: 'Pack 50€',  credits: 600,  price: 49.99 },
+  { id: 'p60',  label: 'Pack 60€',  credits: 740,  price: 59.99 },
+  { id: 'p80',  label: 'Pack 80€',  credits: 1020, price: 79.99 },
+  { id: 'p100', label: 'Pack 100€', credits: 1300, price: 99.99, tag: 'Meilleure valeur' },
 ]
 export function getStripePackPriceId(packId: string): string | undefined {
   return process.env[`STRIPE_PRICE_PACK_${packId.toUpperCase()}`]

@@ -73,17 +73,21 @@ export default function CreditsPage() {
         .balance{display:inline-block;background:#070F22;border:1px solid #0F2040;border-radius:14px;padding:18px 28px;margin-bottom:44px;}
         .balance-label{font-size:13px;color:#6B84AA;font-style:italic;margin-bottom:4px;}
         .balance-value{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;}
-        .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:32px;}
-        @media(max-width:760px){.grid{grid-template-columns:1fr;}}
-        .pack{background:#070F22;border:1px solid #0F2040;border-radius:18px;padding:30px 24px;text-align:center;position:relative;transition:border-color .2s;}
-        .pack:hover{border-color:#4F8EF7;}
-        .pack-tag{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;font-size:11px;padding:4px 12px;border-radius:20px;font-style:italic;}
-        .pack-h{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;margin-bottom:8px;}
-        .pack-credits{font-size:15px;color:#6B84AA;font-style:italic;margin-bottom:18px;}
-        .pack-price{font-family:'Playfair Display',serif;font-size:38px;font-weight:700;margin-bottom:4px;}
-        .pack-price em{font-size:16px;font-style:italic;color:#4A6280;font-weight:400;}
-        .pack-rate{font-size:12px;color:#1E3050;font-style:italic;margin-bottom:22px;}
-        .pack-btn{width:100%;padding:13px;border-radius:10px;background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;border:none;cursor:pointer;}
+        .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px;}
+        @media(max-width:1100px){.grid{grid-template-columns:repeat(3,1fr);}}
+        @media(max-width:820px){.grid{grid-template-columns:repeat(2,1fr);}}
+        @media(max-width:520px){.grid{grid-template-columns:1fr;}}
+        .pack{background:#070F22;border:1px solid #0F2040;border-radius:16px;padding:22px 18px;text-align:center;position:relative;transition:border-color .2s, transform .15s;}
+        .pack:hover{border-color:#4F8EF7;transform:translateY(-2px);}
+        .pack-popular{border-color:#7C3AED;box-shadow:0 0 0 1px rgba(124,58,237,0.25);}
+        .pack-tag{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;font-size:10px;padding:4px 10px;border-radius:20px;font-style:italic;white-space:nowrap;letter-spacing:.3px;}
+        .pack-h{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:6px;}
+        .pack-credits{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;line-height:1;color:#A8C8FC;margin-bottom:2px;}
+        .pack-credits-label{font-size:12px;color:#6B84AA;font-style:italic;margin-bottom:14px;letter-spacing:.5px;}
+        .pack-price{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;margin-bottom:2px;}
+        .pack-price em{font-size:14px;font-style:italic;color:#4A6280;font-weight:400;}
+        .pack-rate{font-size:11px;color:#1E3050;font-style:italic;margin-bottom:18px;}
+        .pack-btn{width:100%;padding:11px;border-radius:9px;background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;border:none;cursor:pointer;}
         .pack-btn:disabled{opacity:.6;cursor:not-allowed;}
         .hint{color:#1E3050;font-size:13px;font-style:italic;margin-top:10px;}
         .legend{margin-top:36px;font-size:13px;color:#4A6280;font-style:italic;line-height:1.8;}
@@ -104,18 +108,23 @@ export default function CreditsPage() {
         </div>
 
         <div className="grid">
-          {CREDIT_PACKS.map((p) => (
-            <div key={p.id} className="pack">
-              {p.tag && <div className="pack-tag">{p.tag}</div>}
-              <div className="pack-h">{p.label}</div>
-              <div className="pack-credits">{p.credits} crédits</div>
-              <div className="pack-price">{p.price}<em>€</em></div>
-              <div className="pack-rate">≈ {(p.price / p.credits).toFixed(2)}€ / crédit</div>
-              <button className="pack-btn" disabled={loadingPack === p.id} onClick={() => handleBuy(p)}>
-                {loadingPack === p.id ? 'Redirection…' : 'Acheter →'}
-              </button>
-            </div>
-          ))}
+          {CREDIT_PACKS.map((p) => {
+            const priceStr = p.price.toFixed(2).replace('.', ',')
+            const creditsPerEuro = (p.credits / p.price).toFixed(1).replace('.', ',')
+            return (
+              <div key={p.id} className={`pack${p.tag ? ' pack-popular' : ''}`}>
+                {p.tag && <div className="pack-tag">{p.tag}</div>}
+                <div className="pack-h">{p.label}</div>
+                <div className="pack-credits">{p.credits}</div>
+                <div className="pack-credits-label">CRÉDITS</div>
+                <div className="pack-price">{priceStr}<em> €</em></div>
+                <div className="pack-rate">{creditsPerEuro} crédits / €</div>
+                <button className="pack-btn" disabled={loadingPack === p.id} onClick={() => handleBuy(p)}>
+                  {loadingPack === p.id ? 'Redirection…' : 'Acheter →'}
+                </button>
+              </div>
+            )
+          })}
         </div>
 
         <p className="legend">
