@@ -292,3 +292,97 @@ create policy "operations_authenticated_delete" on storage.objects
     bucket_id = 'operations'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+-- =========================================================
+-- 8) Blog public — alimenté uniquement par les admins
+-- =========================================================
+-- Flag is_admin sur profiles. Défaut FALSE pour TOUS. Le passage à TRUE se
+-- fait MANUELLEMENT en SQL par le propriétaire de la base, jamais depuis
+-- l'UI ni l'API. Ce flag ne sert qu'au blog — il ne déverrouille rien
+-- d'autre.
+alter table profiles add column if not exists is_admin boolean not null default false;
+
+-- INTERDIT au client de modifier is_admin : on ne l'ajoute pas aux GRANT
+-- update/insert de la section "profiles" plus haut. La policy update_own
+-- autorise la ligne, mais le GRANT colonne par colonne empêche d'écrire
+-- cette colonne précise. Seul le service_role (clé serveur) ou un admin
+-- humain via SQL Editor peut la modifier.
+
+create table if not exists blog_posts (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  media_url text not null,
+  media_type text not null check (media_type in ('image', 'pdf')),
+  author_id uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists blog_posts_created_at_idx on blog_posts(created_at desc);
+
+alter table blog_posts enable row level security;
+
+-- Lecture : tout le monde, même non connecté (blog public).
+drop policy if exists "blog_posts_public_read" on blog_posts;
+create policy "blog_posts_public_read" on blog_posts
+  for select to anon, authenticated
+  using (true);
+
+-- Écriture : uniquement les utilisateurs dont profiles.is_admin = true.
+-- Comme is_admin ne peut être basculé QUE manuellement en SQL, personne ne
+-- peut s'auto-octroyer le droit d'écriture, même via l'API client.
+drop policy if exists "blog_posts_admin_insert" on blog_posts;
+create policy "blog_posts_admin_insert" on blog_posts
+  for insert to authenticated
+  with check (
+    exists (select 1 from profiles where user_id = auth.uid() and is_admin = true)
+    and author_id = auth.uid()
+  );
+
+drop policy if exists "blog_posts_admin_update" on blog_posts;
+create policy "blog_posts_admin_update" on blog_posts
+  for update to authenticated
+  using (exists (select 1 from profiles where user_id = auth.uid() and is_admin = true))
+  with check (exists (select 1 from profiles where user_id = auth.uid() and is_admin = true));
+
+drop policy if exists "blog_posts_admin_delete" on blog_posts;
+create policy "blog_posts_admin_delete" on blog_posts
+  for delete to authenticated
+  using (exists (select 1 from profiles where user_id = auth.uid() and is_admin = true));
+
+-- Bucket Storage pour les médias du blog (lecture publique).
+insert into storage.buckets (id, name, public)
+values ('blog', 'blog', true)
+on conflict (id) do nothing;
+
+drop policy if exists "blog_public_read" on storage.objects;
+create policy "blog_public_read" on storage.objects
+  for select
+  using (bucket_id = 'blog');
+
+-- Upload/update/delete : uniquement les admins.
+drop policy if exists "blog_admin_write" on storage.objects;
+create policy "blog_admin_write" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'blog'
+    and exists (select 1 from profiles where user_id = auth.uid() and is_admin = true)
+  );
+
+drop policy if exists "blog_admin_update" on storage.objects;
+create policy "blog_admin_update" on storage.objects
+  for update to authenticated
+  using (
+    bucket_id = 'blog'
+    and exists (select 1 from profiles where user_id = auth.uid() and is_admin = true)
+  );
+
+drop policy if exists "blog_admin_delete" on storage.objects;
+create policy "blog_admin_delete" on storage.objects
+  for delete to authenticated
+  using (
+    bucket_id = 'blog'
+    and exists (select 1 from profiles where user_id = auth.uid() and is_admin = true)
+  );
+
+-- Pour TE déclarer admin (à exécuter une fois manuellement dans SQL Editor) :
+--   update profiles set is_admin = true where user_id = (select id from auth.users where email = 'maelbrianchon@gmail.com');

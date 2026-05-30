@@ -188,6 +188,7 @@ export default function Dashboard() {
           </a>
           <a className="dash-link" onClick={() => window.location.href='/pricing'}>Tarifs</a>
           <a className="dash-link" onClick={() => window.location.href='/dashboard/profil'}>Profil</a>
+          <a className="dash-link" onClick={() => window.location.href='/blog'}>Blog</a>
           <span className="dash-email">{user.email}</span>
           <button className="dash-logout" onClick={handleLogout}>Déconnexion</button>
         </div>

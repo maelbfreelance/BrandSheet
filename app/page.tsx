@@ -158,7 +158,7 @@ export default function Home() {
         <div className="bs-nav-desktop">
           <a href="#how">Fonctionnement</a>
           <a href="/pricing">Tarifs</a>
-          <a href="#">Blog</a>
+          <a href="/blog">Blog</a>
           <a href="/login" className="bs-btn-nav">Démarrer gratuitement</a>
         </div>
         <div className="bs-nav-mobile">
