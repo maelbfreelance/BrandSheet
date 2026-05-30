@@ -529,18 +529,34 @@ export function buildScenePrompt(brand: any, operation: any): string {
   const palette = colors.slice(0, 3).join(', ') || 'tons neutres'
   const tone = brand.brand_tone || 'professionnel'
   const scheme = toneScheme(tone, colors)
-  const subject = operation?.description || operation?.name || `produit représentant la marque ${brand.brand_name || brand.name}`
-  return `Visuel branded complet pour document A4 portrait. Marque : ${brand.brand_name || brand.name}, secteur ${brand.brand_sector || 'générique'}, ton ${tone}. Contexte de l'opération : ${subject}.
+  const brandName = brand.brand_name || brand.name
+  const userDirection = (operation?.description || '').trim()
 
-SUJET — CRITIQUE : la/les image(s) fournie(s) en référence montrent le produit/service RÉEL à mettre en scène. Tu dois reproduire ce produit FIDÈLEMENT (forme, proportions, couleurs réelles, matière, texture, détails distinctifs visibles sur la référence). Ne pas inventer un autre produit, ne pas styliser, ne pas en changer la couleur. Si plusieurs références sont fournies, fusionne-les comme différents angles d'un même produit.
+  // Si l'utilisateur a écrit une consigne explicite dans la description de
+  // l'opération, c'est elle qui pilote la composition. La staging par défaut
+  // (déduite du ton de marque) n'est utilisée que comme fallback — sinon le
+  // bloc générique écrase systématiquement la consigne utilisateur, qui se
+  // retrouvait noyée dans un seul "Contexte: ..." inerte.
+  const stagingBlock = userDirection
+    ? `DIRECTION CRÉATIVE (consigne utilisateur — PRIORITÉ ABSOLUE, tout le reste est secondaire) :
+"${userDirection}"
 
-STAGING : ${scheme.staging}. Le produit doit occuper UNIQUEMENT la moitié BASSE de l'image (les 50% inférieurs), mis en valeur dans cette mise en scène.
+Respecte cette direction à la lettre pour l'ambiance, les matières, le fond et le rendu général. Les sections "PALETTE" et "ZONE TEXTE" ci-dessous ne doivent pas la contredire.`
+    : `AMBIANCE PAR DÉFAUT (aucune consigne explicite — déduite du ton de marque) : ${scheme.staging}.`
 
-PALETTE DE LA SCÈNE (décor, fond, lumière, accessoires) : ${palette} (utilise uniquement ces couleurs et leurs nuances pour l'environnement). Le produit lui-même conserve ses couleurs réelles vues sur la référence.
+  return `Visuel branded pour document A4 portrait. Marque : ${brandName}, secteur ${brand.brand_sector || 'générique'}, ton ${tone}.
 
-ZONE TEXTE — CRITIQUE : la moitié HAUTE de l'image (les 50% supérieurs) doit être une zone CALME, UNIFORME OU TRÈS DOUCEMENT DÉGRADÉE, ${scheme.zoneDesc}. AUCUN détail complexe, AUCUN objet, AUCUN sujet, AUCUN contraste fort dans cette zone — c'est là que du texte sera incrusté par-dessus. Le contraste entre la zone calme du haut et le produit en bas doit être net mais harmonieux.
+${stagingBlock}
 
-CONTRAINTES STRICTES : aucun texte dans l'image, aucun logo, aucun caractère, aucun chiffre, aucune signature. Photo/rendu réaliste de qualité éditoriale.`
+PRODUIT — OBLIGATOIRE : les image(s) fournies en référence montrent le produit RÉEL à mettre en scène. Reproduis-le FIDÈLEMENT (forme exacte, proportions, couleurs, matière, texture, détails distinctifs). Ne pas inventer un autre produit, ne pas styliser, ne pas changer ses couleurs. Le produit doit être VISIBLE et IDENTIFIABLE dans la moitié basse — la sortie ne doit PAS être un simple dégradé, le produit fait partie intégrante de l'image.
+
+COMPOSITION :
+- Moitié BASSE (50% inférieurs) : le produit mis en scène selon la DIRECTION CRÉATIVE ci-dessus.
+- Moitié HAUTE (50% supérieurs) : zone propice à l'incrustation de texte par-dessus (peu d'objets, peu de détails complexes), mais qui s'intègre naturellement à l'ambiance du bas (par exemple un fondu progressif de la matière/texture du bas vers une teinte calme en haut). Pas de mur uniforme déconnecté.
+
+PALETTE de la scène (décor, lumière, fond) : ${palette}. Le produit conserve ses couleurs réelles vues sur la référence.
+
+INTERDICTIONS STRICTES : aucun texte dans l'image, aucun logo, aucun caractère, aucun chiffre, aucune signature. Rendu photo/éditorial réaliste de qualité.`
 }
 
 // =========================================================

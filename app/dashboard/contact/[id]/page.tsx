@@ -29,6 +29,7 @@ export default function ContactPage() {
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set())
   const [dealText, setDealText] = useState<string>('')
   const [genError, setGenError] = useState<string | null>(null)
+  const [forceSceneRefresh, setForceSceneRefresh] = useState<boolean>(false)
 
   const loadOperations = async () => {
     const { data } = await supabase.from('operations').select('*').eq('contact_id', id).order('created_at', { ascending: false })
@@ -314,6 +315,7 @@ export default function ContactPage() {
           operationId: selectedOpId,
           types: Array.from(selectedTypes),
           dealText: needsDealText ? dealText.trim() : null,
+          forceSceneRefresh,
         }),
       })
       const data = await res.json()
@@ -729,6 +731,16 @@ export default function ContactPage() {
                         />
                       </div>
                     )}
+
+                    <label style={{display:'flex',alignItems:'center',gap:8,marginTop:14,padding:'8px 10px',background:'#070F22',border:'1px solid #0F2040',borderRadius:10,cursor:'pointer',fontSize:13,color:'#6B84AA',fontStyle:'italic'}}>
+                      <input
+                        type="checkbox"
+                        checked={forceSceneRefresh}
+                        onChange={(e) => setForceSceneRefresh(e.target.checked)}
+                        style={{cursor:'pointer'}}
+                      />
+                      <span>↻ Forcer une nouvelle image scène (ignore le visuel précédent)</span>
+                    </label>
 
                     {genError && (
                       <p style={{fontSize:13,color:'#F7954F',fontStyle:'italic',padding:10,background:'#1A0F08',border:'1px solid #3A2010',borderRadius:8,marginTop:12,wordBreak:'break-word'}}>{genError}</p>

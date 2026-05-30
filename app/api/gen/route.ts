@@ -20,7 +20,7 @@ import {
 const NOUVEAUTE_TYPES = new Set(['nouveaute'])
 
 export async function POST(req: Request) {
-  const { contactId, operationId, types, dealText } = await req.json()
+  const { contactId, operationId, types, dealText, forceSceneRefresh } = await req.json()
 
   if (!contactId) {
     return NextResponse.json({ error: 'contactId requis' }, { status: 400 })
@@ -79,8 +79,10 @@ export async function POST(req: Request) {
     }
 
     // Scène image : nécessaire pour tous les types SAUF nouveaute. Cachée sur l'opération.
+    // forceSceneRefresh=true ignore le cache et regénère une image fraîche
+    // (utile si la consigne d'opération a été retravaillée après un 1er rendu décevant).
     const needsScene = validTypes.some((t) => !NOUVEAUTE_TYPES.has(t))
-    let sceneUrl: string | null = operation?.background_image_url || null
+    let sceneUrl: string | null = forceSceneRefresh ? null : (operation?.background_image_url || null)
     if (needsScene && operation && !sceneUrl) {
       const refs: string[] = Array.isArray(operation.images) ? operation.images.filter(Boolean) : []
       if (refs.length === 0) {
