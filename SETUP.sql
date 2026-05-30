@@ -82,22 +82,34 @@ on conflict (user_id) do nothing;
 alter table user_credits enable row level security;
 alter table profiles enable row level security;
 
--- user_credits : un utilisateur lit/modifie uniquement sa propre ligne
+-- user_credits : lecture autorisée, mais l'UPDATE et l'INSERT côté client
+-- sont restreints au strict minimum. Sans ces verrous, un user pourrait :
+--   1) UPDATE pour s'auto-créditer 999k crédits
+--   2) INSERT une ligne avec credits=999k (le default 20 serait bypassé)
+-- depuis la console du navigateur via le client Supabase. Toutes les
+-- écritures sur la valeur de credits doivent passer par supabaseAdmin
+-- (bypass RLS) → /api/gen, /api/credits/refill, /api/stripe/webhook, etc.
 drop policy if exists "user_credits_select_own" on user_credits;
 create policy "user_credits_select_own" on user_credits
   for select to authenticated
   using (auth.uid() = user_id);
 
+-- INSERT autorisé uniquement avec user_id : 'credits' ne peut pas être
+-- spécifié par le client → la valeur default 20 s'applique. ensureCredits()
+-- côté serveur passe par supabaseAdmin qui bypass tout ça.
 drop policy if exists "user_credits_insert_own" on user_credits;
 create policy "user_credits_insert_own" on user_credits
   for insert to authenticated
   with check (auth.uid() = user_id);
 
+-- UPDATE retiré entièrement : aucun chemin client autorisé.
 drop policy if exists "user_credits_update_own" on user_credits;
-create policy "user_credits_update_own" on user_credits
-  for update to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+
+-- Verrouillage colonne par colonne pour user_credits
+revoke insert on user_credits from authenticated;
+revoke update on user_credits from authenticated;
+grant insert (user_id) on user_credits to authenticated;
+-- (Aucun grant update → la colonne credits est intouchable côté client.)
 
 -- profiles : un utilisateur lit/écrit uniquement sa propre fiche
 drop policy if exists "profiles_select_own" on profiles;
@@ -110,11 +122,27 @@ create policy "profiles_insert_own" on profiles
   for insert to authenticated
   with check (auth.uid() = user_id);
 
+-- UPDATE policy : on autorise l'user à modifier sa propre ligne, mais on
+-- restreint via GRANT colonne par colonne (cf. plus bas) quelles colonnes
+-- il a le droit de toucher. Les colonnes sensibles (plan, free_scrape_used,
+-- credits_last_refill_at, account_type) sont exclues — seul le serveur
+-- via supabaseAdmin peut les écrire (Stripe webhook, /api/credits/refill...).
 drop policy if exists "profiles_update_own" on profiles;
 create policy "profiles_update_own" on profiles
   for update to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Verrouillage colonne par colonne pour profiles : on retire INSERT et
+-- UPDATE globaux et on regrante uniquement les colonnes "profil" que l'user
+-- a légitimement le droit d'éditer depuis l'UI (page /dashboard/profil).
+-- Les colonnes "monétaires" (plan, free_scrape_used, credits_last_refill_at,
+-- account_type) prennent leur valeur par défaut à l'INSERT et restent
+-- intouchables ensuite — seul supabaseAdmin peut les écrire.
+revoke insert on profiles from authenticated;
+revoke update on profiles from authenticated;
+grant insert (user_id, full_name, company_name, siret, address, postal_code, city, country, email_pro, phone, logo_url, updated_at) on profiles to authenticated;
+grant update (full_name, company_name, siret, address, postal_code, city, country, email_pro, phone, logo_url, updated_at) on profiles to authenticated;
 
 -- =========================================================
 -- 5) Bucket Storage pour les logos (public en lecture)

@@ -83,7 +83,11 @@ export default function Dashboard() {
     const { data } = await supabase.from('user_credits').select('credits').eq('user_id', userId).maybeSingle()
     if (data) setCredits(data.credits)
     else {
-      await supabase.from('user_credits').insert({ user_id: userId, credits: 20 })
+      // user_id seul est autorisé à l'INSERT côté client (column-grant RLS).
+      // 'credits' prend sa valeur via le default 20 de la table.
+      // (Normalement le trigger init_user_credits a déjà créé la ligne au
+      // signup ; ce fallback ne sert qu'aux comptes pré-existants.)
+      await supabase.from('user_credits').insert({ user_id: userId })
       setCredits(20)
     }
   }

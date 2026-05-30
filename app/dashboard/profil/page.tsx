@@ -29,13 +29,17 @@ export default function ProfilPage() {
         return
       }
       setUser(data.user)
+      // On ne lit que les colonnes éditables : plan/free_scrape_used/etc.
+      // sont gérées côté serveur, on ne les expose pas dans l'état du form
+      // (sinon le upsert essaierait de les renvoyer et serait rejeté par
+      // les column-grants RLS).
       supabase
         .from('profiles')
-        .select('*')
+        .select('full_name, company_name, siret, address, postal_code, city, country, email_pro, phone, logo_url')
         .eq('user_id', data.user.id)
         .maybeSingle()
         .then(({ data: p }) => {
-          if (p) setProfile(p)
+          if (p) setProfile(p as Profile)
         })
     })
   }, [])
