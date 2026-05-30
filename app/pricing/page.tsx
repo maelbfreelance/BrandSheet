@@ -164,7 +164,7 @@ export default function PricingPage() {
               className={`cycle-label${cycle === 'annual' ? ' cycle-label-active' : ''}`}
               onClick={() => setCycle('annual')}
             >Annuel</span>
-            <span className="cycle-badge">−17% · 2 mois offerts</span>
+            <span className="cycle-badge">−30% · plusieurs mois offerts</span>
           </div>
         </div>
 
@@ -191,13 +191,19 @@ export default function PricingPage() {
                   )}
                 </div>
                 <div className="plan-tagline">{plan.tagline}</div>
-                <div className="plan-price">{plan.price}</div>
+                <div className="plan-price">
+                  {plan.monthlyPrice === 0
+                    ? plan.price
+                    : cycle === 'annual'
+                      ? formatEUR(plan.annualMonthlyPrice)
+                      : plan.price}
+                </div>
                 <div className="plan-mo">{plan.priceNumber === 0 ? '/mois · à vie' : '/mois'}</div>
                 <div className="plan-billed">
                   {plan.monthlyPrice === 0
                     ? <>Sans CB · gratuit à vie</>
                     : cycle === 'annual'
-                      ? <>Facturé annuellement (<strong>{formatEUR(plan.annualYearlyPrice)} / an</strong>) — Équivalent à 2 mois offerts</>
+                      ? <>Facturé annuellement (<strong>{formatEUR(plan.annualYearlyPrice)} / an</strong>) — économisez {plan.annualSavingPct}%</>
                       : <>Facturé mensuellement · sans engagement</>}
                 </div>
                 <div className="plan-credits">{plan.creditsPerMonth} crédits inclus chaque mois</div>

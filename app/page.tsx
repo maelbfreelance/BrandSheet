@@ -1,9 +1,28 @@
 'use client'
 import React from 'react'
+import { supabase } from '@/lib/supabase'
 
 export default function Home() {
   const [email, setEmail] = React.useState('')
   const [status, setStatus] = React.useState('')
+
+  // Si un utilisateur déjà connecté arrive sur la LP (notamment juste après
+  // un OAuth Google où Supabase a redirigé sur Site URL = '/' au lieu de
+  // /dashboard), on le bascule directement sur son dashboard. On écoute aussi
+  // onAuthStateChange car le code OAuth peut être présent dans l'URL et
+  // l'exchange de session se fait après le 1er render.
+  React.useEffect(() => {
+    let mounted = true
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted && data.session) window.location.replace('/dashboard')
+    })
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (mounted && session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
+        window.location.replace('/dashboard')
+      }
+    })
+    return () => { mounted = false; sub.subscription.unsubscribe() }
+  }, [])
 
   const handleSubmit = async () => {
     if (!email) return
@@ -247,8 +266,8 @@ export default function Home() {
           </div>
           <div className="bs-plan">
             <div className="bs-plan-tier">Solo</div>
-            <div className="bs-plan-price">6,99€</div>
-            <div className="bs-plan-mo">/mois · ou 83,88€/an (−17%)</div>
+            <div className="bs-plan-price">9,99€</div>
+            <div className="bs-plan-mo">/mois · ou 6,99€/mois en annuel (−30%)</div>
             <div className="bs-plan-contacts">10 contacts</div>
             <ul className="bs-feats">
               <li>150 crédits / mois</li>
@@ -262,8 +281,8 @@ export default function Home() {
           <div className="bs-plan bs-plan-hot">
             <div className="bs-plan-pop">✦ Plus populaire</div>
             <div className="bs-plan-tier">Studio</div>
-            <div className="bs-plan-price">13,99€</div>
-            <div className="bs-plan-mo">/mois · ou 167,88€/an (−17%)</div>
+            <div className="bs-plan-price">19,99€</div>
+            <div className="bs-plan-mo">/mois · ou 13,99€/mois en annuel (−30%)</div>
             <div className="bs-plan-contacts">25 contacts</div>
             <ul className="bs-feats">
               <li>600 crédits / mois</li>
@@ -276,8 +295,8 @@ export default function Home() {
           </div>
           <div className="bs-plan">
             <div className="bs-plan-tier">Agency</div>
-            <div className="bs-plan-price">34,99€</div>
-            <div className="bs-plan-mo">/mois · ou 419,88€/an (−17%)</div>
+            <div className="bs-plan-price">49,99€</div>
+            <div className="bs-plan-mo">/mois · ou 34,99€/mois en annuel (−30%)</div>
             <div className="bs-plan-contacts">Contacts illimités</div>
             <ul className="bs-feats">
               <li>2 000 crédits / mois</li>
