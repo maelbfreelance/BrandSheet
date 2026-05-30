@@ -239,7 +239,7 @@ export default function Home() {
             <div className="bs-plan-contacts">2 contacts inclus</div>
             <ul className="bs-feats">
               <li>20 crédits / mois</li>
-              <li>Analyse de marque IA</li>
+              <li>1 analyse offerte, puis 5 crédits</li>
               <li>Génération HTML brandée</li>
               <li>5 derniers documents conservés</li>
             </ul>
@@ -247,11 +247,12 @@ export default function Home() {
           </div>
           <div className="bs-plan">
             <div className="bs-plan-tier">Solo</div>
-            <div className="bs-plan-price">9,99€</div>
-            <div className="bs-plan-mo">/mois</div>
-            <div className="bs-plan-contacts">15 contacts</div>
+            <div className="bs-plan-price">6,99€</div>
+            <div className="bs-plan-mo">/mois · ou 83,88€/an (−17%)</div>
+            <div className="bs-plan-contacts">10 contacts</div>
             <ul className="bs-feats">
               <li>150 crédits / mois</li>
+              <li>Analyse de marque : 3 crédits</li>
               <li>Régénération de documents</li>
               <li>CGV &amp; devis générés</li>
               <li>Conservation 30 jours</li>
@@ -261,11 +262,12 @@ export default function Home() {
           <div className="bs-plan bs-plan-hot">
             <div className="bs-plan-pop">✦ Plus populaire</div>
             <div className="bs-plan-tier">Studio</div>
-            <div className="bs-plan-price">19,99€</div>
-            <div className="bs-plan-mo">/mois</div>
-            <div className="bs-plan-contacts">50 contacts</div>
+            <div className="bs-plan-price">13,99€</div>
+            <div className="bs-plan-mo">/mois · ou 167,88€/an (−17%)</div>
+            <div className="bs-plan-contacts">25 contacts</div>
             <ul className="bs-feats">
               <li>600 crédits / mois</li>
+              <li>Analyse de marque : 2 crédits</li>
               <li>Toutes les fonctions Solo</li>
               <li>Conservation 1 an</li>
               <li>Support prioritaire</li>
@@ -274,8 +276,8 @@ export default function Home() {
           </div>
           <div className="bs-plan">
             <div className="bs-plan-tier">Agency</div>
-            <div className="bs-plan-price">49,99€</div>
-            <div className="bs-plan-mo">/mois</div>
+            <div className="bs-plan-price">34,99€</div>
+            <div className="bs-plan-mo">/mois · ou 419,88€/an (−17%)</div>
             <div className="bs-plan-contacts">Contacts illimités</div>
             <ul className="bs-feats">
               <li>2 000 crédits / mois</li>

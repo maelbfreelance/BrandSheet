@@ -1,12 +1,13 @@
 'use client'
 import React, { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { PLANS, PLAN_ORDER, PlanId } from '@/lib/plans'
+import { PLANS, PLAN_ORDER, PlanId, BillingCycle, formatEUR } from '@/lib/plans'
 
 export default function PricingPage() {
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null)
   const [currentPlan, setCurrentPlan] = useState<PlanId>('starter')
   const [busyPlan, setBusyPlan] = useState<PlanId | null>(null)
+  const [cycle, setCycle] = useState<BillingCycle>('monthly')
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -30,8 +31,12 @@ export default function PricingPage() {
     if (planId === currentPlan) return
     setBusyPlan(planId)
     // TODO: brancher Stripe Checkout côté serveur
+    const plan = PLANS[planId]
+    const billingLabel = cycle === 'annual' && plan.monthlyPrice > 0
+      ? `${formatEUR(plan.annualYearlyPrice)}/an`
+      : `${plan.price}/mois`
     setTimeout(() => {
-      alert(`Stripe Checkout à brancher — passage au plan ${PLANS[planId].label} (${PLANS[planId].price}/mois)`)
+      alert(`Stripe Checkout à brancher — passage au plan ${plan.label} (${billingLabel})`)
       setBusyPlan(null)
     }, 400)
   }
@@ -73,7 +78,19 @@ export default function PricingPage() {
         .plan-tier{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;margin-bottom:6px;}
         .plan-tagline{font-size:13px;color:#4A6280;font-style:italic;margin-bottom:18px;min-height:18px;}
         .plan-price{font-family:'Playfair Display',serif;font-size:42px;font-weight:700;line-height:1;margin-bottom:4px;}
-        .plan-mo{font-size:15px;color:#4A6280;font-style:italic;margin-bottom:18px;}
+        .plan-mo{font-size:15px;color:#4A6280;font-style:italic;margin-bottom:6px;}
+        .plan-billed{font-size:12px;color:#6B84AA;font-style:italic;line-height:1.5;margin-bottom:14px;min-height:32px;}
+        .plan-billed strong{color:#A8C8FC;font-weight:500;}
+        .plan-save{display:inline-block;background:rgba(40,200,64,0.12);color:#28C840;border:1px solid rgba(40,200,64,0.35);border-radius:14px;padding:2px 10px;font-size:11px;font-style:italic;margin-left:6px;letter-spacing:.3px;}
+
+        .cycle-wrap{display:inline-flex;align-items:center;gap:14px;background:#070F22;border:1px solid #0F2040;border-radius:30px;padding:6px 8px;margin-top:24px;}
+        .cycle-label{font-size:13px;color:#4A6280;font-style:italic;padding:0 6px;cursor:pointer;user-select:none;transition:color .2s;}
+        .cycle-label-active{color:#F0F4FF;}
+        .cycle-switch{position:relative;width:46px;height:24px;background:#0D1B35;border-radius:14px;border:1px solid #1E3A5F;cursor:pointer;transition:background .2s;flex-shrink:0;}
+        .cycle-switch-on{background:linear-gradient(135deg,#4F8EF7,#7C3AED);border-color:transparent;}
+        .cycle-knob{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s;}
+        .cycle-knob-on{transform:translateX(22px);}
+        .cycle-badge{font-size:11px;font-style:italic;color:#28C840;background:rgba(40,200,64,0.1);border:1px solid rgba(40,200,64,0.3);border-radius:14px;padding:3px 10px;letter-spacing:.3px;}
         .plan-credits{font-size:14px;font-style:italic;color:#A8C8FC;margin:0 0 14px;padding:12px 0;border-top:1px solid #0F1E3A;border-bottom:1px solid #0F1E3A;}
         .feats{list-style:none;display:flex;flex-direction:column;gap:9px;margin-bottom:24px;padding:0;flex-grow:1;}
         .feats li{font-size:14px;color:#A8C8FC;display:flex;gap:9px;align-items:flex-start;font-style:italic;line-height:1.5;}
@@ -128,6 +145,29 @@ export default function PricingPage() {
           </div>
         )}
 
+        <div style={{marginTop:24,display:'flex',flexDirection:'column',alignItems:'center',gap:10}}>
+          <div className="cycle-wrap" role="group" aria-label="Cycle de facturation">
+            <span
+              className={`cycle-label${cycle === 'monthly' ? ' cycle-label-active' : ''}`}
+              onClick={() => setCycle('monthly')}
+            >Mensuel</span>
+            <button
+              type="button"
+              aria-pressed={cycle === 'annual'}
+              aria-label="Basculer en facturation annuelle"
+              className={`cycle-switch${cycle === 'annual' ? ' cycle-switch-on' : ''}`}
+              onClick={() => setCycle(cycle === 'annual' ? 'monthly' : 'annual')}
+            >
+              <span className={`cycle-knob${cycle === 'annual' ? ' cycle-knob-on' : ''}`}></span>
+            </button>
+            <span
+              className={`cycle-label${cycle === 'annual' ? ' cycle-label-active' : ''}`}
+              onClick={() => setCycle('annual')}
+            >Annuel</span>
+            <span className="cycle-badge">−17% · 2 mois offerts</span>
+          </div>
+        </div>
+
         <div className="plans">
           {PLAN_ORDER.map((id) => {
             const plan = PLANS[id]
@@ -144,10 +184,22 @@ export default function PricingPage() {
               <div key={id} className={classes.join(' ')}>
                 {isPopular && !isCurrent && <div className="plan-pop">✦ Plus populaire</div>}
                 {isCurrent && <div className="plan-current-tag">● Actuel</div>}
-                <div className="plan-tier">{plan.label}</div>
+                <div className="plan-tier">
+                  {plan.label}
+                  {plan.monthlyPrice > 0 && cycle === 'annual' && (
+                    <span className="plan-save">−{plan.annualSavingPct}%</span>
+                  )}
+                </div>
                 <div className="plan-tagline">{plan.tagline}</div>
                 <div className="plan-price">{plan.price}</div>
                 <div className="plan-mo">{plan.priceNumber === 0 ? '/mois · à vie' : '/mois'}</div>
+                <div className="plan-billed">
+                  {plan.monthlyPrice === 0
+                    ? <>Sans CB · gratuit à vie</>
+                    : cycle === 'annual'
+                      ? <>Facturé annuellement (<strong>{formatEUR(plan.annualYearlyPrice)} / an</strong>) — Équivalent à 2 mois offerts</>
+                      : <>Facturé mensuellement · sans engagement</>}
+                </div>
                 <div className="plan-credits">{plan.creditsPerMonth} crédits inclus chaque mois</div>
                 <ul className="feats">
                   {plan.features.map((f) => <li key={f}>{f}</li>)}
@@ -166,6 +218,7 @@ export default function PricingPage() {
 
         <p className="legend">
           ✦ Une <strong>génération complète</strong> (6 documents brandés + visuel IA) coûte <strong>10 crédits</strong>. Une <strong>régénération ponctuelle</strong> coûte <strong>2 crédits</strong> et n'est disponible qu'à partir du plan Solo.<br />
+          ✦ <strong>Analyse de marque</strong> : 1ère analyse <strong>offerte à vie</strong> à l'inscription, puis <strong>5 crédits</strong> (Starter), <strong>3 crédits</strong> (Solo), <strong>2 crédits</strong> (Studio), <strong>incluse</strong> (Agency).<br />
           {loggedIn === false && '✦ Inscription gratuite, sans carte bancaire pour commencer.'}
           {loggedIn === true && '✦ Le paiement Stripe sera disponible prochainement.'}
         </p>

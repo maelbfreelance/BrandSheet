@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { PLANS, PlanId } from '@/lib/plans'
+import { getCredits, deductCredits } from '@/lib/credits'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!
@@ -11,6 +13,47 @@ export async function POST(req: Request) {
 
   if (!url || !contactId) {
     return NextResponse.json({ error: 'URL et contactId requis' }, { status: 400 })
+  }
+
+  // Récupère le contact pour identifier le propriétaire (et donc son plan).
+  const { data: contactRow, error: contactErr } = await supabaseAdmin
+    .from('contacts')
+    .select('user_id')
+    .eq('id', contactId)
+    .maybeSingle()
+  if (contactErr) {
+    return NextResponse.json({ error: 'Erreur lecture contact', detail: contactErr.message }, { status: 500 })
+  }
+  if (!contactRow) {
+    return NextResponse.json({ error: 'Contact introuvable' }, { status: 404 })
+  }
+  const userId: string = contactRow.user_id
+
+  // Plan + suivi du scraping gratuit (1 seul à vie, tout plan confondu).
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('plan, free_scrape_used')
+    .eq('user_id', userId)
+    .maybeSingle()
+  const plan: PlanId = (profile?.plan && profile.plan in PLANS) ? (profile.plan as PlanId) : 'starter'
+  const freeUsed = !!profile?.free_scrape_used
+  const scrapeCost = PLANS[plan].scrapeCost
+
+  // Si le scraping gratuit a déjà été utilisé ET que le plan facture l'analyse,
+  // on vérifie le solde de crédits AVANT toute requête réseau / IA.
+  if (freeUsed && scrapeCost > 0) {
+    const balance = await getCredits(userId)
+    if (balance < scrapeCost) {
+      return NextResponse.json(
+        {
+          error: 'insufficient_credits',
+          message: `Il vous reste ${balance} crédits. Une analyse coûte ${scrapeCost} crédits sur le plan ${PLANS[plan].label}.`,
+          credits: balance,
+          required: scrapeCost,
+        },
+        { status: 402 },
+      )
+    }
   }
 
   // Normalise l'URL : ajoute https:// si l'utilisateur n'a pas mis de protocole
@@ -114,7 +157,25 @@ Réponds UNIQUEMENT en JSON valide, sans backticks, sans texte avant ou après :
       brand_values: brand.brand_values
     }).eq('id', contactId)
 
-    return NextResponse.json(brand)
+    // Facturation post-analyse : 1ère analyse gratuite à vie, puis débit
+    // selon le plan. Marquer free_scrape_used même pour Agency (scrapeCost=0)
+    // pour rester cohérent si l'utilisateur rétrograde.
+    let remainingCredits: number | null = null
+    if (!freeUsed) {
+      await supabaseAdmin
+        .from('profiles')
+        .upsert({ user_id: userId, free_scrape_used: true }, { onConflict: 'user_id' })
+    } else if (scrapeCost > 0) {
+      const deduction = await deductCredits(userId, scrapeCost)
+      remainingCredits = deduction.remaining
+    }
+
+    return NextResponse.json({
+      ...brand,
+      free_scrape_used: true,
+      scrape_cost: freeUsed ? scrapeCost : 0,
+      credits: remainingCredits,
+    })
 
   } catch (error) {
     console.error('Analyze error:', error)

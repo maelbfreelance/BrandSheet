@@ -1,6 +1,7 @@
 'use client'
 import React, { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { PLANS, PlanId } from '@/lib/plans'
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
@@ -11,6 +12,7 @@ export default function Dashboard() {
   const [form, setForm] = useState({ name: '', url: '' })
   const [deleteModal, setDeleteModal] = useState<string | null>(null)
   const [deleteConfirmed, setDeleteConfirmed] = useState(false)
+  const [plan, setPlan] = useState<PlanId>('starter')
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -19,6 +21,9 @@ export default function Dashboard() {
         setUser(data.user)
         loadContacts(data.user.id)
         loadCredits(data.user.id)
+        supabase.from('profiles').select('plan').eq('user_id', data.user.id).maybeSingle().then(({ data: p }) => {
+          if (p?.plan && p.plan in PLANS) setPlan(p.plan as PlanId)
+        })
       }
     })
   }, [])
@@ -39,8 +44,10 @@ export default function Dashboard() {
 
   const handleAdd = async () => {
     if (!form.name || !form.url) return
-    if (contacts.length >= 2) {
-      alert('Plan Starter limité à 2 contacts. Passez au plan Solo pour en ajouter plus.')
+    const limit = PLANS[plan].contactLimit
+    if (limit !== null && contacts.length >= limit) {
+      const nextLabel = plan === 'starter' ? 'Solo' : plan === 'solo' ? 'Studio' : 'Agency'
+      alert(`Plan ${PLANS[plan].label} limité à ${limit} contacts. Passez au plan ${nextLabel} pour en ajouter plus.`)
       return
     }
     setLoading(true)
