@@ -41,6 +41,12 @@ alter table profiles add column if not exists free_scrape_used boolean not null 
 alter table profiles add column if not exists account_type text not null default 'freelance'
   check (account_type in ('freelance', 'brand'));
 
+-- Date du dernier refill mensuel de crédits. NULL = jamais refillé (sera
+-- ancré à NOW() au prochain login via /api/credits/refill). À +1 mois
+-- calendaire, le prochain refill ajoute creditsPerMonth(plan) au solde.
+-- Sémantique : 1 seul refill par login, mois manqués non rattrapés.
+alter table profiles add column if not exists credits_last_refill_at timestamptz;
+
 -- 3) Trigger : 20 crédits à l'inscription
 create or replace function init_user_credits()
 returns trigger

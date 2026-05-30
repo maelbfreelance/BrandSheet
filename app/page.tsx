@@ -270,7 +270,7 @@ export default function Home() {
             <div className="bs-plan-mo">/mois · ou 6,99€/mois en annuel (−30%)</div>
             <div className="bs-plan-contacts">10 contacts</div>
             <ul className="bs-feats">
-              <li>150 crédits / mois</li>
+              <li>100 crédits / mois (cumul possible)</li>
               <li>Analyse de marque : 3 crédits</li>
               <li>Régénération de documents</li>
               <li>CGV &amp; devis générés</li>
@@ -285,7 +285,7 @@ export default function Home() {
             <div className="bs-plan-mo">/mois · ou 13,99€/mois en annuel (−30%)</div>
             <div className="bs-plan-contacts">25 contacts</div>
             <ul className="bs-feats">
-              <li>600 crédits / mois</li>
+              <li>300 crédits / mois (cumul possible)</li>
               <li>Analyse de marque : 2 crédits</li>
               <li>Toutes les fonctions Solo</li>
               <li>Conservation 1 an</li>
@@ -299,7 +299,7 @@ export default function Home() {
             <div className="bs-plan-mo">/mois · ou 34,99€/mois en annuel (−30%)</div>
             <div className="bs-plan-contacts">Contacts illimités</div>
             <ul className="bs-feats">
-              <li>2 000 crédits / mois</li>
+              <li>1 000 crédits / mois (cumul possible)</li>
               <li>Conservation illimitée</li>
               <li>Toutes les fonctions Studio</li>
               <li>Accompagnement dédié</li>

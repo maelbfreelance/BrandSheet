@@ -244,6 +244,7 @@ export default function PricingPage() {
           ✦ <strong>Mails brandés</strong> (remerciement, marketing) — <strong>2 crédits</strong>, réservés aux plans payants (Solo et plus). Envoi via Gmail en un clic.<br />
           ✦ <strong>Régénération</strong> d'un document existant : <strong>2 crédits</strong>, à partir du plan Solo.<br />
           ✦ <strong>Analyse de marque</strong> : 1ère analyse <strong>offerte à vie</strong> à l'inscription, puis <strong>5 crédits</strong> (Starter), <strong>3 crédits</strong> (Solo), <strong>2 crédits</strong> (Studio), <strong>incluse</strong> (Agency).<br />
+          ✦ <strong>Refill mensuel</strong> : les crédits du plan s'ajoutent <strong>1 fois par mois calendaire</strong>, déclenchés au login après l'échéance. Cumul possible : les crédits non utilisés ne sont pas effacés. <strong>Mois sans login = mois non rattrapé</strong> (1 seul refill par retour, même après une longue absence).<br />
           {loggedIn === false && '✦ Inscription gratuite, sans carte bancaire pour commencer.'}
           {loggedIn === true && '✦ Le paiement Stripe sera disponible prochainement.'}
         </p>

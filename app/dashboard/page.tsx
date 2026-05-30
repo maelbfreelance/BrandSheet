@@ -62,6 +62,24 @@ export default function Dashboard() {
   }
 
   const loadCredits = async (userId: string) => {
+    // Avant de lire le solde, on déclenche le refill mensuel si dû. La route
+    // applique au plus 1 refill par appel (cf. lib/credits.ts → refillIfDue).
+    try {
+      const res = await fetch('/api/credits/refill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (typeof data.balance === 'number') {
+          setCredits(data.balance)
+          return
+        }
+      }
+    } catch {
+      // Tolérance : on retombe sur la lecture directe ci-dessous si refill KO.
+    }
     const { data } = await supabase.from('user_credits').select('credits').eq('user_id', userId).maybeSingle()
     if (data) setCredits(data.credits)
     else {
