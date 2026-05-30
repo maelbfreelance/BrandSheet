@@ -32,6 +32,8 @@ export default function ContactPage() {
   const [genError, setGenError] = useState<string | null>(null)
   const [forceSceneRefresh, setForceSceneRefresh] = useState<boolean>(false)
   const [quality, setQuality] = useState<'medium' | 'high'>('medium')
+  const [showFifoWarning, setShowFifoWarning] = useState<{ purge: number } | null>(null)
+  const [purgeNotice, setPurgeNotice] = useState<string | null>(null)
 
   const loadOperations = async () => {
     const { data } = await supabase.from('operations').select('*').eq('contact_id', id).order('created_at', { ascending: false })
@@ -299,17 +301,8 @@ export default function ContactPage() {
   const dealMissing = needsDealText && !dealText.trim()
   const highLocked = plan === 'starter'
 
-  const handleGenerate = async () => {
-    setGenError(null)
-    if (selectedTypes.size === 0) return
-    if (dealMissing) {
-      setGenError('Décris ton offre pour la fiche Forfait.')
-      return
-    }
-    if ((credits ?? 0) < generationCost) {
-      setShowNoCredits(true)
-      return
-    }
+  const runGenerate = async () => {
+    setShowFifoWarning(null)
     setGenerating(true)
     try {
       const res = await fetch('/api/gen', {
@@ -336,6 +329,10 @@ export default function ContactPage() {
       }
       setGenerated(true)
       if (typeof data.credits === 'number') setCredits(data.credits)
+      if (typeof data.purged === 'number' && data.purged > 0) {
+        setPurgeNotice(`${data.purged} ancien${data.purged > 1 ? 's' : ''} document${data.purged > 1 ? 's' : ''} retiré${data.purged > 1 ? 's' : ''} de l'historique pour respecter la limite de votre plan.`)
+        setTimeout(() => setPurgeNotice(null), 7000)
+      }
       const { data: newDocs } = await supabase
         .from('documents')
         .select('*')
@@ -347,6 +344,29 @@ export default function ContactPage() {
     } finally {
       setGenerating(false)
     }
+  }
+
+  const handleGenerate = () => {
+    setGenError(null)
+    if (selectedTypes.size === 0) return
+    if (dealMissing) {
+      setGenError('Décris ton offre pour la fiche Forfait.')
+      return
+    }
+    if ((credits ?? 0) < generationCost) {
+      setShowNoCredits(true)
+      return
+    }
+    const retention = PLANS[plan].retention
+    if (retention.kind === 'count') {
+      const currentCount = docs.filter((d) => d.contact_id === id).length
+      const projected = currentCount + selectedTypes.size
+      if (projected > retention.value) {
+        setShowFifoWarning({ purge: projected - retention.value })
+        return
+      }
+    }
+    runGenerate()
   }
 
   // Copie HTML stylé + version texte dans le presse-papier puis ouvre Gmail
@@ -1071,6 +1091,27 @@ export default function ContactPage() {
               <button className="modal-confirm" onClick={handleAnalyze}>Confirmer →</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {showFifoWarning && (
+        <div className="modal-overlay" onClick={() => setShowFifoWarning(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-h">Limite d'historique atteinte</h2>
+            <p className="modal-p">
+              Votre plan <strong style={{color:'var(--link-soft)'}}>{PLANS[plan].label}</strong> conserve les <strong>{PLANS[plan].retention.kind === 'count' ? PLANS[plan].retention.value : ''} documents les plus récents</strong> par contact. Poursuivre supprimera définitivement <strong>{showFifoWarning.purge}</strong> document{showFifoWarning.purge > 1 ? 's' : ''} parmi les plus anciens.
+            </p>
+            <div className="modal-actions">
+              <button className="modal-cancel" onClick={() => setShowFifoWarning(null)}>Annuler</button>
+              <button className="modal-confirm" onClick={runGenerate}>Poursuivre la génération →</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {purgeNotice && (
+        <div style={{position:'fixed',bottom:24,right:24,maxWidth:360,background:'var(--bg-elev)',border:'1px solid var(--decor-subtle)',borderRadius:12,padding:'14px 18px',fontSize:13,color:'var(--text-mid)',fontStyle:'italic',boxShadow:'0 8px 24px rgba(0,0,0,0.35)',zIndex:150}}>
+          {purgeNotice}
         </div>
       )}
 

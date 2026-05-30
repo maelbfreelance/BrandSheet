@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { PER_DOC_COST, getCredits, deductCredits } from '@/lib/credits'
+import { PLANS, type PlanId } from '@/lib/plans'
 import {
   ACTIVE_DOC_TYPES,
   MAIL_DOC_TYPES,
@@ -155,22 +156,37 @@ export async function POST(req: Request) {
       const fullHtml = buildHtml({ brand: contact, profile, docType, sceneUrl, bodyHtml, productImageUrl, accountType })
       results[docType] = fullHtml
 
-      await supabaseAdmin.from('documents').upsert(
-        {
-          contact_id: contactId,
-          operation_id: operationId ?? null,
-          user_id: contact.user_id,
-          type: docType,
-          content: fullHtml,
-          created_at: new Date().toISOString(),
-        },
-        { onConflict: 'contact_id,operation_id,type' },
-      )
+      await supabaseAdmin.from('documents').insert({
+        contact_id: contactId,
+        operation_id: operationId ?? null,
+        user_id: contact.user_id,
+        type: docType,
+        content: fullHtml,
+        created_at: new Date().toISOString(),
+      })
+    }
+
+    // FIFO : purge des plus vieux documents du contact dépassant la limite du
+    // plan. retention.kind === 'count' uniquement (les autres plans = unlimited).
+    let purgedCount = 0
+    const planInfo = PLANS[plan as PlanId] ?? PLANS.starter
+    if (planInfo.retention.kind === 'count') {
+      const limit = planInfo.retention.value
+      const { data: allDocs } = await supabaseAdmin
+        .from('documents')
+        .select('id, created_at')
+        .eq('contact_id', contactId)
+        .order('created_at', { ascending: false })
+      if (allDocs && allDocs.length > limit) {
+        const toDelete = allDocs.slice(limit).map((d) => d.id)
+        await supabaseAdmin.from('documents').delete().in('id', toDelete)
+        purgedCount = toDelete.length
+      }
     }
 
     const deduction = await deductCredits(userId, cost)
 
-    return NextResponse.json({ success: true, documents: results, credits: deduction.remaining, sceneUrl, cost, generated: validTypes })
+    return NextResponse.json({ success: true, documents: results, credits: deduction.remaining, sceneUrl, cost, generated: validTypes, purged: purgedCount })
   } catch (error) {
     console.error('Generate error:', error)
     const message = error instanceof Error ? error.message : String(error)

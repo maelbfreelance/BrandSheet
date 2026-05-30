@@ -250,12 +250,12 @@ create policy "operations_delete_own" on operations
 alter table documents add column if not exists operation_id uuid references operations(id) on delete cascade;
 create index if not exists documents_operation_id_idx on documents(operation_id);
 
--- Unicité (contact, opération, type) avec NULLS NOT DISTINCT pour traiter
--- operation_id=NULL comme une valeur unique. Permet l'upsert côté /api/gen.
+-- Plus d'unicité (contact, opération, type) : les documents s'accumulent en
+-- mode FIFO selon le plan (cf. PLANS[plan].retention.value dans lib/plans.ts).
+-- /api/gen fait un INSERT (jamais upsert) et purge les plus anciens dépassant
+-- la limite du plan après chaque génération.
 alter table documents drop constraint if exists documents_contact_id_type_key;
 alter table documents drop constraint if exists documents_contact_op_type_key;
-alter table documents add constraint documents_contact_op_type_key
-  unique nulls not distinct (contact_id, operation_id, type);
 
 -- =========================================================
 -- 7) Bucket Storage pour les images d'opérations (public en lecture)
