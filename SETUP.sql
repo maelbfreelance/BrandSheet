@@ -30,6 +30,17 @@ create table if not exists profiles (
 -- Pilote la rétention des documents générés et le coût de modification.
 alter table profiles add column if not exists plan text not null default 'starter';
 
+-- Scraping/analyse : 1ère analyse gratuite à vie par utilisateur (tous plans),
+-- ensuite débit de crédits selon le plan (cf. lib/plans.ts → scrapeCost).
+alter table profiles add column if not exists free_scrape_used boolean not null default false;
+
+-- Type de compte : 'freelance' (utilise le branding scrapé du contact) ou
+-- 'brand' (utilise son propre branding défini sur le profil). Par défaut
+-- 'freelance' pour préserver le comportement existant. Le rendu mode 'brand'
+-- sera branché dans une phase ultérieure.
+alter table profiles add column if not exists account_type text not null default 'freelance'
+  check (account_type in ('freelance', 'brand'));
+
 -- 3) Trigger : 20 crédits à l'inscription
 create or replace function init_user_credits()
 returns trigger
@@ -157,6 +168,8 @@ create table if not exists operations (
 alter table operations add column if not exists hero_image_url text;
 -- Image scène (produit mis en scène + zone calme pour le texte overlay)
 alter table operations add column if not exists background_image_url text;
+-- Description du forfait/deal saisie par l'user pour la fiche 'forfait'
+alter table operations add column if not exists deal_text text;
 
 create index if not exists operations_contact_id_idx on operations(contact_id);
 create index if not exists operations_user_id_idx on operations(user_id);

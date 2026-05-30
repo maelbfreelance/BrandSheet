@@ -3,17 +3,46 @@ import { supabaseAdmin } from './supabase-admin'
 import { getOpenAI } from './openai'
 
 export const DOC_TYPE_LABELS: Record<string, string> = {
-  bienvenue: 'Mail de bienvenue',
-  remerciement: 'Mail de remerciement',
-  avis: 'Demande d\'avis',
+  // Fiches actives
   facture: 'Facture',
+  remerciement: 'Fiche remerciement',
   devis: 'Devis',
+  relance: 'Relance',
+  nouveaute: 'Nouveauté',
+  forfait: 'Forfait',
+  // Mails actifs (réservés aux plans payants)
+  mail_remerciement: 'Mail remerciement',
+  mail_marketing: 'Mail marketing',
+  // Legacy — conservés pour afficher proprement les anciens documents historiques
+  bienvenue: 'Mail de bienvenue',
+  avis: 'Demande d\'avis',
   cgv: 'Conditions Générales de Vente',
 }
 
+/** Types de docs proposés à la génération à la carte (ordre = ordre UI). */
+export const ACTIVE_DOC_TYPES = [
+  'facture',
+  'remerciement',
+  'devis',
+  'relance',
+  'nouveaute',
+  'forfait',
+  'mail_remerciement',
+  'mail_marketing',
+] as const
+export type ActiveDocType = (typeof ACTIVE_DOC_TYPES)[number]
+
+/** Mails : gated aux plans payants, layout overlay court, intégration Gmail. */
+export const MAIL_DOC_TYPES = new Set<string>(['mail_remerciement', 'mail_marketing'])
+
+/** Docs avec bloc 5 étoiles toujours visible. */
+const FIVE_STARS_DOCS = new Set<string>(['remerciement', 'mail_remerciement', 'avis'])
+
 // Mails courts → image en pleine page, texte par-dessus.
-// Docs longs (facture/devis/cgv) → image en bandeau hero + corps en section propre lisible.
-const OVERLAY_DOCS = new Set(['bienvenue', 'remerciement', 'avis'])
+// Fiches → image en bandeau hero + corps en section propre lisible.
+// Nouveauté → layout dédié (image produit centrée XL + mot "NOUVEAUTÉ").
+const OVERLAY_DOCS = new Set(['mail_remerciement', 'mail_marketing', 'bienvenue', 'avis'])
+const NOUVEAUTE_DOCS = new Set(['nouveaute'])
 
 export function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
@@ -193,8 +222,9 @@ export function buildHtml(opts: {
   docType: string
   sceneUrl: string | null
   bodyHtml: string
+  productImageUrl?: string | null
 }): string {
-  const { brand, profile, docType, sceneUrl, bodyHtml } = opts
+  const { brand, profile, docType, sceneUrl, bodyHtml, productImageUrl } = opts
   const colors = Array.isArray(brand.brand_colors) ? brand.brand_colors : []
   const scheme = toneScheme(brand.brand_tone, colors)
   const pal = resolvePalette(colors, scheme)
@@ -207,24 +237,24 @@ export function buildHtml(opts: {
     : ''
 
   const isOverlay = OVERLAY_DOCS.has(docType)
+  const isNouveaute = NOUVEAUTE_DOCS.has(docType)
   const isDark = scheme.zone === 'dark'
 
-  // Bloc 5 étoiles pour la demande d'avis (couleur principale scrappée)
-  const starsBlock =
-    docType === 'avis'
-      ? `<div class="doc-stars" aria-label="5 étoiles" data-editable-block="stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>`
-      : ''
+  // Bloc 5 étoiles : remerciement (fiche), mail_remerciement, et legacy 'avis'
+  const starsBlock = FIVE_STARS_DOCS.has(docType)
+    ? `<div class="doc-stars" aria-label="5 étoiles" data-editable-block="stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>`
+    : ''
 
   const fallbackGradient = `linear-gradient(160deg, ${pal.c1} 0%, ${pal.c2} 55%, ${pal.c3} 100%)`
 
-  // Variables CSS communes aux deux layouts
   const cssVars = `--c1:${pal.c1};--c2:${pal.c2};--c3:${pal.c3};--bg-light:${pal.bgLight};--bg-dark:${pal.bgDark};--accent-light:${pal.accentOnLight};--accent-dark:${pal.accentOnDark};--heading:${headingFont};--body:${bodyFont};`
 
-  const html = isOverlay
+  if (isNouveaute) {
+    return buildNouveauteLayout({ brandName, docType, productImageUrl: productImageUrl || null, bodyHtml, footerBits, fallbackGradient, isDark, cssVars, pal })
+  }
+  return isOverlay
     ? buildOverlayLayout({ brandName, docType, sceneUrl, bodyHtml, starsBlock, footerBits, fallbackGradient, isDark, cssVars, pal })
     : buildHeroLayout({ brandName, docType, sceneUrl, bodyHtml, starsBlock, footerBits, fallbackGradient, isDark, cssVars, pal })
-
-  return html
 }
 
 type LayoutArgs = {
@@ -296,6 +326,69 @@ body{font-family:var(--body);color:var(--text);line-height:1.65;padding:24px;min
     </div>
     <div class="doc-body" data-editable="true">${bodyHtml}${starsBlock}</div>
   </div>
+  ${footerBits ? `<div class="doc-footer">${escapeHtml(footerBits)}</div>` : ''}
+</div>
+${editorScript()}
+</body></html>`
+}
+
+// Layout 3 — Nouveauté : image produit upload de l'opération à l'identique, en
+// gros au centre, sous laquelle on imprime "NOUVEAUTÉ" en majuscules dans la
+// typo scrapée. Texte court de l'IA en dessous. Aucun rendu IA de scène : on
+// utilise l'image originale telle qu'uploadée par l'user.
+function buildNouveauteLayout(a: {
+  brandName: string
+  docType: string
+  productImageUrl: string | null
+  bodyHtml: string
+  footerBits: string
+  fallbackGradient: string
+  isDark: boolean
+  cssVars: string
+  pal: Palette
+}): string {
+  const { brandName, docType, productImageUrl, bodyHtml, footerBits, fallbackGradient, isDark, cssVars, pal } = a
+  const bg = isDark ? pal.bgDark : pal.bgLight
+  const text = textOn(bg)
+  const accent = isDark ? pal.accentOnDark : pal.accentOnLight
+  const borderColor = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)'
+
+  const productBlock = productImageUrl
+    ? `<img class="nouveaute-product" src="${escapeHtml(productImageUrl)}" alt="${escapeHtml(brandName)}" />`
+    : `<div class="nouveaute-product nouveaute-fallback" style="background:${fallbackGradient};"></div>`
+
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"/><title>${escapeHtml(brandName)} — ${escapeHtml(DOC_TYPE_LABELS[docType] || docType)}</title>
+<style>
+:root{${cssVars}--text:${text};--accent:${accent};--bg:${bg};}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:#1c1f2a;}
+body{font-family:var(--body);color:var(--text);line-height:1.6;padding:24px;min-height:100vh;}
+.doc{position:relative;max-width:820px;margin:0 auto;border-radius:16px;overflow:hidden;background:var(--bg);box-shadow:0 14px 50px rgba(0,0,0,0.30);}
+.nouveaute-top{padding:48px 60px 14px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid ${borderColor};}
+.nouveaute-brand{font-family:var(--heading);font-size:28px;font-weight:800;letter-spacing:-0.5px;color:var(--text);}
+.nouveaute-tag{font-size:11px;text-transform:uppercase;letter-spacing:4px;color:var(--accent);font-weight:700;}
+.nouveaute-stage{padding:48px 40px 16px;display:flex;align-items:center;justify-content:center;min-height:520px;}
+.nouveaute-product{display:block;max-width:560px;max-height:560px;width:auto;height:auto;object-fit:contain;filter:drop-shadow(0 30px 60px rgba(0,0,0,0.25));}
+.nouveaute-fallback{width:560px;height:420px;border-radius:18px;}
+.nouveaute-title{font-family:var(--heading);font-size:96px;font-weight:900;line-height:1;text-align:center;letter-spacing:6px;text-transform:uppercase;margin:24px 40px 8px;color:var(--text);}
+.nouveaute-title em{font-style:normal;background:linear-gradient(120deg, var(--c1), var(--c2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.nouveaute-body{padding:8px 80px 36px;text-align:center;font-size:16px;color:var(--text);}
+.nouveaute-body p{margin-bottom:10px;}
+.nouveaute-body strong{color:var(--accent);}
+.doc-footer{margin:0 60px;padding:14px 0 26px;font-size:11px;color:var(--text);border-top:1px solid ${borderColor};opacity:0.7;}
+[contenteditable="true"]{outline:2px dashed ${isDark ? 'rgba(255,255,255,.45)' : 'rgba(79,142,247,.55)'};outline-offset:6px;border-radius:4px;}
+@media print{body{background:#fff;padding:0;}.doc{box-shadow:none;border-radius:0;}}
+@media(max-width:600px){.nouveaute-title{font-size:56px;letter-spacing:3px;}.nouveaute-stage{min-height:340px;padding:32px 20px 8px;}.nouveaute-product{max-width:90%;max-height:380px;}.nouveaute-top,.nouveaute-body{padding-left:24px;padding-right:24px;}.doc-footer{margin:0 24px;}}
+</style></head>
+<body>
+<div class="doc" data-brandsheet="${escapeHtml(docType)}">
+  <div class="nouveaute-top">
+    <div class="nouveaute-brand">${escapeHtml(brandName)}</div>
+    <div class="nouveaute-tag">Nouveauté</div>
+  </div>
+  <div class="nouveaute-stage">${productBlock}</div>
+  <h1 class="nouveaute-title"><em>NOUVEAUTÉ</em></h1>
+  <div class="nouveaute-body" data-editable="true">${bodyHtml}</div>
   ${footerBits ? `<div class="doc-footer">${escapeHtml(footerBits)}</div>` : ''}
 </div>
 ${editorScript()}
@@ -451,7 +544,7 @@ CONTRAINTES STRICTES : aucun texte dans l'image, aucun logo, aucun caractère, a
 // =========================================================
 // Prompts texte (inchangé sauf injection 5 étoiles côté HTML pour 'avis')
 // =========================================================
-export function buildDocPrompts(brand: any, profile: any, operation: any): Record<string, string> {
+export function buildDocPrompts(brand: any, profile: any, operation: any, opts?: { dealText?: string | null }): Record<string, string> {
   const b = brand
   const o = operation
     ? [operation.name && `Opération: ${operation.name}`, operation.description && `Contexte: ${operation.description}`].filter(Boolean).join(' | ')
@@ -462,14 +555,28 @@ export function buildDocPrompts(brand: any, profile: any, operation: any): Recor
     ? `Émetteur : ${[profile.full_name && `Nom: ${profile.full_name}`, profile.company_name && `Raison sociale: ${profile.company_name}`, profile.siret && `SIRET: ${profile.siret}`, profile.address && `Adresse: ${profile.address}`, (profile.postal_code || profile.city) && `${profile.postal_code || ''} ${profile.city || ''}`.trim(), profile.email_pro && `Email: ${profile.email_pro}`, profile.phone && `Tel: ${profile.phone}`].filter(Boolean).join(' | ')}`
     : ''
 
+  const dealText = (opts?.dealText || operation?.deal_text || '').trim()
+  const dealLine = dealText ? `Deal/Offre décrite par le freelance : ${dealText}.` : ''
+
   const htmlContract = `IMPORTANT: Output UNIQUEMENT du HTML brut, sans <html>, sans <body>, sans <style>, sans backticks, sans markdown. Balises autorisées: <h2>, <h3>, <p>, <strong>, <ul>, <ol>, <li>, <br>, <table>, <thead>, <tbody>, <tr>, <th>, <td>. Le texte doit être prêt à être affiché dans un document brandé.`
+  const mailContract = `IMPORTANT: Output UNIQUEMENT du HTML brut. Commence par <h2>Objet : …</h2> (l'objet sera utilisé pour pré-remplir le sujet d'un mail Gmail). Puis le corps en <p>. Pas de <html>, <body>, <style>, backticks, ni markdown. Balises autorisées: <h2>, <h3>, <p>, <strong>, <ul>, <ol>, <li>, <br>.`
 
   return {
-    bienvenue: `Rédige le CORPS HTML d'un mail de bienvenue pour un nouveau client. Commence par <h2>Objet : ...</h2> puis le corps en <p>. ${brandInfo}. ${issuerInfo} Contexte: ${o}. 150 mots max. Ton ${b.brand_tone}. ${htmlContract}`,
-    remerciement: `Rédige le CORPS HTML d'un mail de remerciement post-prestation. Commence par <h2>Objet : ...</h2>. ${brandInfo}. ${issuerInfo} Contexte: ${o}. 120 mots max. Ton ${b.brand_tone}. ${htmlContract}`,
-    avis: `Rédige le CORPS HTML d'un mail de demande d'avis client (un bloc visuel 5 étoiles sera ajouté automatiquement après ton texte, ne le mentionne pas mais invite à laisser une note). Commence par <h2>Objet : ...</h2>. ${brandInfo}. ${issuerInfo} Contexte: ${o}. 100 mots max. Ton ${b.brand_tone}. ${htmlContract}`,
+    // ===== FICHES =====
     facture: `Génère le CORPS HTML d'une facture professionnelle structurée avec <h2>Facture</h2>, un bloc émetteur/client en <p>, un tableau des prestations avec <table>, totaux HT/TVA/TTC en <p><strong>, conditions de paiement en <p>, mentions légales en fin. ${brandInfo}. ${issuerInfo} Prestation: ${o}. Numéro FAC-2025-001, date du jour. ${htmlContract}`,
+    remerciement: `Rédige le CORPS HTML d'une FICHE de remerciement post-prestation. TRÈS PEU DE TEXTE — un titre court en <h2>, 1 à 2 phrases chaleureuses en <p>, et signe au nom de ${b.brand_name || b.name}. Un bloc 5 étoiles visuel sera ajouté automatiquement après ton texte, ne le mentionne pas. 40 mots maximum au total. ${brandInfo}. ${issuerInfo} Contexte: ${o}. Ton ${b.brand_tone}. ${htmlContract}`,
     devis: `Génère le CORPS HTML d'un devis professionnel avec <h2>Devis</h2>, bloc émetteur/client, tableau désignations, montants HT/TVA/TTC en <strong>, validité 30j, zone signature. ${brandInfo}. ${issuerInfo} Prestation: ${o}. Numéro DEV-2025-001, date du jour. ${htmlContract}`,
+    relance: `Génère le CORPS HTML d'une fiche de RELANCE pour facture impayée. <h2>Relance — Facture en attente</h2>, rappel courtois du contexte en <p>, tableau récap (numéro de facture, date d'émission, échéance dépassée, montant TTC) en <table>, modalités de paiement, ton ferme mais respectueux. Termine par une demande de régularisation rapide et tes coordonnées. ${brandInfo}. ${issuerInfo} Prestation: ${o}. Numéro REL-2025-001, date du jour, facture initiale supposée FAC-2025-001. ${htmlContract}`,
+    nouveaute: `Rédige le CORPS HTML d'une fiche NOUVEAUTÉ produit. TRÈS COURT — l'image du produit est déjà affichée en gros au-dessus de ton texte, et le titre "NOUVEAUTÉ" est imprimé par le layout (ne le réécris pas). Tu produis UNIQUEMENT 2 à 4 phrases courtes en <p> qui présentent ce que la nouveauté apporte au client, avec un bénéfice clair, et un dernier <p> avec un appel à l'action (ex: "Découvrir →"). 50 mots maximum. Ne mets pas de <h2>. ${brandInfo}. Contexte du produit/opération: ${o}. Ton ${b.brand_tone}. ${htmlContract}`,
+    forfait: `Rédige le CORPS HTML d'une fiche FORFAIT/OFFRE commerciale. <h2>${dealText ? 'Notre offre' : 'Forfait sur mesure'}</h2>, présente le deal en <p>, puis détaille les éléments inclus en <ul>, mets le prix/conditions clés en <strong>, termine par les modalités d'engagement et un appel à l'action. ${dealLine} ${brandInfo}. ${issuerInfo} Contexte: ${o}. Ton ${b.brand_tone}. ${htmlContract}`,
+
+    // ===== MAILS (plans payants) =====
+    mail_remerciement: `Rédige un mail de remerciement post-prestation. ${mailContract} Un bloc 5 étoiles visuel sera ajouté automatiquement à la fin, invite poliment à laisser une note sans l'afficher en texte. ${brandInfo}. ${issuerInfo} Contexte: ${o}. 100 mots max. Ton ${b.brand_tone}.`,
+    mail_marketing: `Rédige un mail marketing personnalisé qui s'appuie SUR LE CONTEXTE de l'opération ci-dessous (produit, public, ambiance). ${mailContract} Le corps doit accrocher dès la 1ère phrase, présenter le bénéfice clair de l'opération, et finir par un appel à l'action net. ${brandInfo}. ${issuerInfo} Contexte de l'opération: ${o}. 130 mots max. Ton ${b.brand_tone}.`,
+
+    // ===== Legacy (conservés pour régénération d'anciens docs) =====
+    bienvenue: `Rédige le CORPS HTML d'un mail de bienvenue pour un nouveau client. Commence par <h2>Objet : ...</h2> puis le corps en <p>. ${brandInfo}. ${issuerInfo} Contexte: ${o}. 150 mots max. Ton ${b.brand_tone}. ${htmlContract}`,
+    avis: `Rédige le CORPS HTML d'un mail de demande d'avis client (un bloc visuel 5 étoiles sera ajouté automatiquement après ton texte, ne le mentionne pas mais invite à laisser une note). Commence par <h2>Objet : ...</h2>. ${brandInfo}. ${issuerInfo} Contexte: ${o}. 100 mots max. Ton ${b.brand_tone}. ${htmlContract}`,
     cgv: `Génère des CGV conformes au droit français, structurées avec <h2> pour chaque article. Inclure: objet, prix/paiement, livraison, rétractation, responsabilités, RGPD, litiges, identification du prestataire. Termine par <p><em>Disclaimer : ces CGV sont à valider par un professionnel juridique.</em></p>. ${brandInfo}. ${issuerInfo} Activité: ${b.brand_sector}. ${htmlContract}`,
   }
 }

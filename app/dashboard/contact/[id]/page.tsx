@@ -25,6 +25,10 @@ export default function ContactPage() {
   const [deleteOpModal, setDeleteOpModal] = useState<string | null>(null)
   const [deleteOpConfirmed, setDeleteOpConfirmed] = useState(false)
   const [plan, setPlan] = useState<PlanId>('starter')
+  const [freeScrapeUsed, setFreeScrapeUsed] = useState<boolean>(false)
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set())
+  const [dealText, setDealText] = useState<string>('')
+  const [genError, setGenError] = useState<string | null>(null)
 
   const loadOperations = async () => {
     const { data } = await supabase.from('operations').select('*').eq('contact_id', id).order('created_at', { ascending: false })
@@ -47,8 +51,9 @@ export default function ContactPage() {
       supabase.from('user_credits').select('credits').eq('user_id', data.user.id).maybeSingle().then(({ data: c }) => {
         setCredits(c?.credits ?? 0)
       })
-      supabase.from('profiles').select('plan').eq('user_id', data.user.id).maybeSingle().then(({ data: p }) => {
+      supabase.from('profiles').select('plan, free_scrape_used').eq('user_id', data.user.id).maybeSingle().then(({ data: p }) => {
         if (p?.plan && p.plan in PLANS) setPlan(p.plan as PlanId)
+        if (p) setFreeScrapeUsed(!!p.free_scrape_used)
       })
     })
   }, [id])
@@ -66,13 +71,34 @@ export default function ContactPage() {
   }
 
   const docTypeLabels: Record<string, string> = {
-    bienvenue: 'Mail bienvenue',
-    remerciement: 'Remerciement',
-    avis: 'Demande avis',
+    // Fiches actives
     facture: 'Facture',
+    remerciement: 'Fiche remerciement',
     devis: 'Devis',
+    relance: 'Relance',
+    nouveaute: 'Nouveauté',
+    forfait: 'Forfait',
+    // Mails (plans payants)
+    mail_remerciement: 'Mail remerciement',
+    mail_marketing: 'Mail marketing',
+    // Legacy
+    bienvenue: 'Mail bienvenue',
+    avis: 'Demande avis',
     cgv: 'CGV',
   }
+
+  // Sélection des types proposés à la génération (ordre = ordre UI).
+  const DOC_CHOICES: { id: string; label: string; hint: string; mail?: boolean }[] = [
+    { id: 'facture', label: 'Facture', hint: 'Fiche professionnelle avec totaux HT/TVA/TTC' },
+    { id: 'remerciement', label: 'Fiche remerciement', hint: 'Texte court, 5 étoiles visibles' },
+    { id: 'devis', label: 'Devis', hint: 'Avec validité 30j et zone signature' },
+    { id: 'relance', label: 'Relance', hint: 'Pour facture impayée, ton ferme et courtois' },
+    { id: 'nouveaute', label: 'Nouveauté', hint: 'Photo produit en grand au centre + accroche' },
+    { id: 'forfait', label: 'Forfait', hint: 'Décris ton offre, l’IA la met en page' },
+    { id: 'mail_remerciement', label: 'Mail remerciement', hint: 'Envoi via Gmail · 5 étoiles', mail: true },
+    { id: 'mail_marketing', label: 'Mail marketing', hint: 'Reprend le contexte de l’opération', mail: true },
+  ]
+  const PER_DOC_COST = 2
 
   const handleDownloadDoc = (doc: any) => {
     const content = doc.content || ''
@@ -206,9 +232,18 @@ export default function ContactPage() {
 
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
 
+  const scrapeCost = PLANS[plan].scrapeCost
+  const nextScrapeCost = freeScrapeUsed ? scrapeCost : 0
+
   const handleAnalyze = async () => {
     setShowReanalyzeConfirm(false)
     setAnalyzeError(null)
+    // Garde-fou côté client : si le scraping gratuit a été utilisé et que
+    // le plan facture l'analyse, on bloque avant l'appel réseau.
+    if (freeScrapeUsed && scrapeCost > 0 && (credits ?? 0) < scrapeCost) {
+      setShowNoCredits(true)
+      return
+    }
     setAnalyzing(true)
     try {
       const res = await fetch('/api/analyze', {
@@ -217,11 +252,18 @@ export default function ContactPage() {
         body: JSON.stringify({ url: contact.url, contactId: id })
       })
       const data = await res.json()
+      if (res.status === 402) {
+        if (typeof data.credits === 'number') setCredits(data.credits)
+        setShowNoCredits(true)
+        return
+      }
       if (!res.ok || data.error) {
         setAnalyzeError(data.detail || data.error || `HTTP ${res.status}`)
       } else {
         setBrand(data)
         setContact({ ...contact, ...data })
+        if (data.free_scrape_used) setFreeScrapeUsed(true)
+        if (typeof data.credits === 'number') setCredits(data.credits)
       }
     } catch (e) {
       setAnalyzeError(e instanceof Error ? e.message : String(e))
@@ -238,25 +280,52 @@ export default function ContactPage() {
     }
   }
 
+  const toggleDocType = (typeId: string) => {
+    setSelectedTypes((prev) => {
+      const next = new Set(prev)
+      if (next.has(typeId)) next.delete(typeId)
+      else next.add(typeId)
+      return next
+    })
+  }
+
+  const generationCost = selectedTypes.size * PER_DOC_COST
+  const needsDealText = selectedTypes.has('forfait')
+  const dealMissing = needsDealText && !dealText.trim()
+
   const handleGenerate = async () => {
-    if ((credits ?? 0) < 10) {
+    setGenError(null)
+    if (selectedTypes.size === 0) return
+    if (dealMissing) {
+      setGenError('Décris ton offre pour la fiche Forfait.')
+      return
+    }
+    if ((credits ?? 0) < generationCost) {
       setShowNoCredits(true)
       return
     }
     setGenerating(true)
-    const res = await fetch('/api/gen', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contactId: id, operationId: selectedOpId })
-    })
-    const data = await res.json()
-    if (res.status === 402) {
-      setCredits(data.credits ?? 0)
-      setShowNoCredits(true)
-      setGenerating(false)
-      return
-    }
-    if (data.success) {
+    try {
+      const res = await fetch('/api/gen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactId: id,
+          operationId: selectedOpId,
+          types: Array.from(selectedTypes),
+          dealText: needsDealText ? dealText.trim() : null,
+        }),
+      })
+      const data = await res.json()
+      if (res.status === 402) {
+        setCredits(data.credits ?? 0)
+        setShowNoCredits(true)
+        return
+      }
+      if (!res.ok || data.error) {
+        setGenError(data.message || data.detail || data.error || `HTTP ${res.status}`)
+        return
+      }
       setGenerated(true)
       if (typeof data.credits === 'number') setCredits(data.credits)
       const { data: newDocs } = await supabase
@@ -265,8 +334,32 @@ export default function ContactPage() {
         .eq('contact_id', id)
         .order('created_at', { ascending: false })
       if (newDocs) setDocs(newDocs)
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setGenerating(false)
     }
-    setGenerating(false)
+  }
+
+  // Extraction sujet + corps texte d'un mail généré pour pré-remplir Gmail compose.
+  const extractMailParts = (html: string): { subject: string; body: string } => {
+    const subjMatch = html.match(/<h2[^>]*>\s*Objet\s*:?\s*([^<]*)<\/h2>/i)
+    const subject = (subjMatch?.[1] || '').trim()
+    const bodyMatch = html.match(/<div[^>]*class="doc-body"[^>]*>([\s\S]*?)<\/div>/i)
+    const bodyHtml = (bodyMatch?.[1] || html)
+      .replace(/<h2[^>]*>\s*Objet[\s\S]*?<\/h2>/i, '')
+      .replace(/<div[^>]*class="doc-stars"[\s\S]*?<\/div>/gi, '')
+    const div = document.createElement('div')
+    div.innerHTML = bodyHtml
+    const text = (div.textContent || '').replace(/\s+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+    return { subject, body: text }
+  }
+
+  const openInGmail = (doc: any) => {
+    const { subject, body } = extractMailParts(doc.content || '')
+    const to = contact?.brand_email || contact?.email || ''
+    const params = new URLSearchParams({ view: 'cm', fs: '1', to, su: subject, body })
+    window.open(`https://mail.google.com/mail/?${params.toString()}`, '_blank', 'noopener,noreferrer')
   }
 
   if (!contact) return null
@@ -406,7 +499,13 @@ export default function ContactPage() {
             <div className="panel-h">Actions</div>
             <button className="action-btn action-primary" onClick={handleAnalyzeClick} disabled={analyzing}>
               <span>✦</span>
-              {analyzing ? 'Analyse...' : brand ? 'Ré-analyser' : "Lancer l'analyse"}
+              {analyzing
+                ? 'Analyse...'
+                : brand
+                  ? `Ré-analyser${nextScrapeCost > 0 ? ` (${nextScrapeCost} crédits)` : ''}`
+                  : nextScrapeCost === 0
+                    ? "Lancer l'analyse (offert)"
+                    : `Lancer l'analyse (${nextScrapeCost} crédits)`}
             </button>
             <button className="action-btn action-secondary" onClick={() => { setOpError(null); setShowOpForm(true) }}>
               <span>+</span> Ajouter une opération
@@ -572,20 +671,89 @@ export default function ContactPage() {
                   </div>
                 )}
 
-                {generated && (
-                  <div className="success-msg">✦ Tous les documents ont été générés !</div>
+                {generated && selectedTypes.size > 0 && (
+                  <div className="success-msg">✦ {selectedTypes.size} document{selectedTypes.size > 1 ? 's' : ''} généré{selectedTypes.size > 1 ? 's' : ''} !</div>
                 )}
 
-                <button className="generate-btn" onClick={handleGenerate} disabled={generating || !selectedOpId}>
+                {selectedOpId && (
+                  <div style={{marginTop:24,background:'#050B18',border:'1px solid #0F2040',borderRadius:12,padding:16}}>
+                    <div className="panel-h" style={{marginBottom:10}}>Choisis les documents à générer</div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:8}}>
+                      {DOC_CHOICES.map((choice) => {
+                        const locked = !!choice.mail && plan === 'starter'
+                        const checked = selectedTypes.has(choice.id)
+                        return (
+                          <label
+                            key={choice.id}
+                            onClick={() => { if (locked) window.location.href = '/pricing' }}
+                            style={{
+                              display:'flex',alignItems:'flex-start',gap:10,padding:'10px 12px',borderRadius:10,cursor:locked?'pointer':'pointer',
+                              background: checked ? 'rgba(79,142,247,0.14)' : '#070F22',
+                              border: `1px solid ${checked ? '#7BAAFB' : '#0F2040'}`,
+                              opacity: locked ? 0.55 : 1,
+                              transition:'all .15s',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={locked}
+                              onChange={() => !locked && toggleDocType(choice.id)}
+                              style={{marginTop:3,cursor:locked?'not-allowed':'pointer'}}
+                            />
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{display:'flex',alignItems:'center',gap:6,fontSize:14,fontWeight:600,color: checked ? '#A8C8FC' : '#F0F4FF'}}>
+                                <span>{choice.label}</span>
+                                {choice.mail && (
+                                  <span style={{fontSize:9,letterSpacing:1,textTransform:'uppercase',color:'#A8C8FC',background:'#0D1B35',border:'1px solid #1E3050',borderRadius:6,padding:'1px 6px'}}>
+                                    {locked ? 'Plan payant' : 'Mail'}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{fontSize:11,color:'#4A6280',fontStyle:'italic',marginTop:2}}>{choice.hint}</div>
+                            </div>
+                          </label>
+                        )
+                      })}
+                    </div>
+
+                    {needsDealText && (
+                      <div style={{marginTop:14}}>
+                        <label className="panel-h" style={{display:'block',marginBottom:6}}>Décris ton offre / deal</label>
+                        <textarea
+                          value={dealText}
+                          onChange={(e) => setDealText(e.target.value)}
+                          placeholder="Ex: 3 mois d'accompagnement, 1 réunion / semaine, livrables inclus, 1 200 € HT, paiement en 3 fois..."
+                          rows={3}
+                          style={{width:'100%',background:'#070F22',border:'1px solid #0F2040',borderRadius:10,padding:12,color:'#F0F4FF',fontFamily:"'Cormorant Garamond',serif",fontSize:14,resize:'vertical',minHeight:80}}
+                        />
+                      </div>
+                    )}
+
+                    {genError && (
+                      <p style={{fontSize:13,color:'#F7954F',fontStyle:'italic',padding:10,background:'#1A0F08',border:'1px solid #3A2010',borderRadius:8,marginTop:12,wordBreak:'break-word'}}>{genError}</p>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  className="generate-btn"
+                  onClick={handleGenerate}
+                  disabled={generating || !selectedOpId || selectedTypes.size === 0 || dealMissing}
+                >
                   {generating
                     ? '⏳ Génération en cours...'
-                    : selectedOpId
-                      ? '✦ Générer tous les documents →'
-                      : 'Sélectionnez une opération'}
+                    : !selectedOpId
+                      ? 'Sélectionnez une opération'
+                      : selectedTypes.size === 0
+                        ? 'Coche au moins 1 document'
+                        : `✦ Générer ${selectedTypes.size} document${selectedTypes.size > 1 ? 's' : ''} →`}
                 </button>
                 <p className="cost-hint">
                   {selectedOpId
-                    ? <>Pour l'opération <strong style={{color:'#A8C8FC'}}>{operations.find(o => o.id === selectedOpId)?.name}</strong> · Coût : 10 crédits {typeof credits === 'number' && <>· solde {credits}</>}</>
+                    ? selectedTypes.size > 0
+                      ? <>Coût : <strong style={{color:'#A8C8FC'}}>{generationCost} crédits</strong> ({selectedTypes.size} × {PER_DOC_COST}) {typeof credits === 'number' && <>· solde {credits}</>}</>
+                      : <>Coût : 2 crédits par document. Coche au moins 1 document pour pouvoir générer.</>
                     : <>Cliquez une opération dans la barre latérale pour pouvoir générer.</>}
                 </p>
               </div>
@@ -674,6 +842,9 @@ export default function ContactPage() {
                 )}
                 {plan !== 'starter' && !isEditing && (
                   <button onClick={regenerateDoc} disabled={isRegen} style={{background:'#0D1B35',border:'1px solid #0F2040',color:'#A8C8FC',padding:'9px 16px',borderRadius:8,fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:'italic',cursor:'pointer'}}>{isRegen ? '⟳ Régénération...' : '⟳ Régénérer (2 crédits)'}</button>
+                )}
+                {viewerDoc?.type?.startsWith('mail_') && !isEditing && (
+                  <button onClick={() => openInGmail(viewerDoc)} style={{background:'linear-gradient(135deg,#4F8EF7,#7C3AED)',border:'none',color:'#fff',padding:'9px 16px',borderRadius:8,fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:'italic',cursor:'pointer'}}>✉ Ouvrir dans Gmail</button>
                 )}
                 <button onClick={() => handleDownloadDoc(viewerDoc)} disabled={isEditing} style={{background:'#0D1B35',border:'1px solid #0F2040',color:'#F0F4FF',padding:'9px 16px',borderRadius:8,fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:'italic',cursor:isEditing?'not-allowed':'pointer',opacity:isEditing?0.5:1}}>↓ Télécharger</button>
                 <button onClick={closeViewer} style={{background:'transparent',border:'1px solid #0F2040',color:'#4A6280',padding:'9px 14px',borderRadius:8,fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:'italic',cursor:'pointer'}}>✕</button>
@@ -774,7 +945,12 @@ export default function ContactPage() {
         <div className="modal-overlay" onClick={() => setShowReanalyzeConfirm(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2 className="modal-h">Ré-analyser ?</h2>
-            <p className="modal-p">Le branding actuel sera remplacé par la nouvelle analyse. Les documents déjà générés ne seront pas affectés.</p>
+            <p className="modal-p">
+              Le branding actuel sera remplacé par la nouvelle analyse. Les documents déjà générés ne seront pas affectés.
+              {nextScrapeCost > 0
+                ? <><br /><br />Coût sur le plan <strong style={{color:'#A8C8FC'}}>{PLANS[plan].label}</strong> : <strong>{nextScrapeCost} crédits</strong>.</>
+                : <><br /><br />Analyse <strong>offerte</strong> {freeScrapeUsed ? 'sur le plan Agency' : '(votre 1ʳᵉ analyse est gratuite)'}.</>}
+            </p>
             <div className="modal-actions">
               <button className="modal-cancel" onClick={() => setShowReanalyzeConfirm(false)}>Annuler</button>
               <button className="modal-confirm" onClick={handleAnalyze}>Confirmer →</button>
@@ -789,7 +965,7 @@ export default function ContactPage() {
             <h2 className="modal-h">Crédits insuffisants</h2>
             <p className="modal-p">
               Il vous reste <strong>{credits ?? 0} crédits</strong>.<br />
-              Une génération complète en coûte 10. Rechargez votre solde pour continuer.
+              Une génération complète coûte 10 crédits. Une analyse en coûte <strong>{scrapeCost}</strong> sur le plan {PLANS[plan].label}. Rechargez votre solde ou passez à un plan supérieur pour continuer.
             </p>
             <div className="modal-actions">
               <button className="modal-cancel" onClick={() => setShowNoCredits(false)}>Plus tard</button>

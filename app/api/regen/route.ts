@@ -48,9 +48,11 @@ export async function POST(req: Request) {
       operation = op
     }
 
-    // Régen : nouvelle scène obligatoire. Si échec, on annule avant débit.
+    // Régen : nouvelle scène obligatoire SAUF pour 'nouveaute' qui n'utilise
+    // pas la scène IA (image produit originale). Si échec, on annule avant débit.
+    const needsScene = doc.type !== 'nouveaute'
     let sceneUrl: string | null = operation?.background_image_url || null
-    if (operation) {
+    if (needsScene && operation) {
       const refs: string[] = Array.isArray(operation.images) ? operation.images.filter(Boolean) : []
       if (refs.length === 0) {
         return NextResponse.json(
@@ -64,6 +66,9 @@ export async function POST(req: Request) {
         .update({ background_image_url: sceneUrl })
         .eq('id', operation.id)
     }
+    const productImageUrl: string | null = Array.isArray(operation?.images) && operation.images.length > 0
+      ? operation.images[0]
+      : null
 
     const prompts = buildDocPrompts(contact, profile, operation)
     const prompt = prompts[doc.type]
@@ -79,7 +84,7 @@ export async function POST(req: Request) {
     if (content.type !== 'text') return NextResponse.json({ error: 'Réponse IA invalide' }, { status: 500 })
 
     const bodyHtml = sanitizeBody(content.text)
-    const fullHtml = buildHtml({ brand: contact, profile, docType: doc.type, sceneUrl, bodyHtml })
+    const fullHtml = buildHtml({ brand: contact, profile, docType: doc.type, sceneUrl, bodyHtml, productImageUrl })
 
     await supabaseAdmin.from('documents').update({ content: fullHtml, created_at: new Date().toISOString() }).eq('id', docId)
 
