@@ -69,59 +69,59 @@ export default function PricingPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
         *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:'Cormorant Garamond',serif;background:#050B18;color:#F0F4FF;}
-        .nav{display:flex;justify-content:space-between;align-items:center;padding:20px 44px;border-bottom:1px solid #0F1E3A;}
+        body{font-family:'Cormorant Garamond',serif;background:var(--bg-deep);color:var(--text-strong);}
+        .nav{display:flex;justify-content:space-between;align-items:center;padding:20px 44px;border-bottom:1px solid var(--border-1);}
         .logo{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;background:linear-gradient(135deg,#4F8EF7,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;cursor:pointer;text-decoration:none;}
         .nav-right{display:flex;gap:24px;align-items:center;}
-        .nav-link{color:#4A6280;font-size:15px;text-decoration:none;font-style:italic;cursor:pointer;background:none;border:none;font-family:'Cormorant Garamond',serif;}
-        .nav-link:hover{color:#F0F4FF;}
+        .nav-link{color:var(--text-muted);font-size:15px;text-decoration:none;font-style:italic;cursor:pointer;background:none;border:none;font-family:'Cormorant Garamond',serif;}
+        .nav-link:hover{color:var(--text-strong);}
         .btn-nav{background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff!important;padding:11px 22px;border-radius:8px;font-size:14px;text-decoration:none;}
 
         .body{max-width:1100px;margin:0 auto;padding:80px 24px 60px;text-align:center;}
         .eyebrow{font-size:13px;font-weight:300;letter-spacing:3px;text-transform:uppercase;color:#4F8EF7;margin-bottom:16px;font-style:italic;}
         .h1{font-family:'Playfair Display',serif;font-size:54px;font-weight:700;line-height:1.1;margin-bottom:14px;letter-spacing:-1px;}
         .h1 em{font-style:italic;background:linear-gradient(135deg,#4F8EF7,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-        .sub{font-size:19px;color:#4A6280;font-style:italic;line-height:1.7;max-width:540px;margin:0 auto 14px;}
-        .current{display:inline-flex;align-items:center;gap:8px;background:#070F22;border:1px solid #1E3A5F;border-radius:30px;padding:8px 18px;margin-top:18px;font-size:13px;color:#A8C8FC;font-style:italic;}
+        .sub{font-size:19px;color:var(--text-muted);font-style:italic;line-height:1.7;max-width:540px;margin:0 auto 14px;}
+        .current{display:inline-flex;align-items:center;gap:8px;background:var(--bg-elev);border:1px solid var(--decor-subtle);border-radius:30px;padding:8px 18px;margin-top:18px;font-size:13px;color:var(--link-soft);font-style:italic;}
         .current-dot{width:7px;height:7px;border-radius:50%;background:#4F8EF7;}
 
         .plans{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:50px;text-align:left;}
-        .plan{background:#070F22;border:1px solid #0F2040;border-radius:18px;padding:32px 24px;position:relative;display:flex;flex-direction:column;transition:transform .2s, border-color .2s;}
-        .plan:hover{transform:translateY(-3px);border-color:#1E3A5F;}
+        .plan{background:var(--bg-elev);border:1px solid var(--border-2);border-radius:18px;padding:32px 24px;position:relative;display:flex;flex-direction:column;transition:transform .2s, border-color .2s;}
+        .plan:hover{transform:translateY(-3px);border-color:var(--decor-subtle);}
         .plan-pop{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#4F8EF7,#7C3AED);font-size:11px;font-style:italic;color:#fff;padding:6px 18px;border-radius:20px;white-space:nowrap;letter-spacing:.5px;}
         .plan-hot{border:1.5px solid #4F8EF7;box-shadow:0 0 0 4px rgba(79,142,247,0.08);}
         .plan-current{border:1.5px solid #28C840;}
         .plan-current-tag{position:absolute;top:-13px;right:14px;background:#28C840;color:#fff;font-size:11px;font-style:italic;padding:5px 12px;border-radius:20px;}
         .plan-tier{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;margin-bottom:6px;}
-        .plan-tagline{font-size:13px;color:#4A6280;font-style:italic;margin-bottom:18px;min-height:18px;}
+        .plan-tagline{font-size:13px;color:var(--text-muted);font-style:italic;margin-bottom:18px;min-height:18px;}
         .plan-price{font-family:'Playfair Display',serif;font-size:42px;font-weight:700;line-height:1;margin-bottom:4px;}
-        .plan-mo{font-size:15px;color:#4A6280;font-style:italic;margin-bottom:6px;}
-        .plan-billed{font-size:12px;color:#6B84AA;font-style:italic;line-height:1.5;margin-bottom:14px;min-height:32px;}
-        .plan-billed strong{color:#A8C8FC;font-weight:500;}
+        .plan-mo{font-size:15px;color:var(--text-muted);font-style:italic;margin-bottom:6px;}
+        .plan-billed{font-size:12px;color:var(--text-mid);font-style:italic;line-height:1.5;margin-bottom:14px;min-height:32px;}
+        .plan-billed strong{color:var(--link-soft);font-weight:500;}
         .plan-save{display:inline-block;background:rgba(40,200,64,0.12);color:#28C840;border:1px solid rgba(40,200,64,0.35);border-radius:14px;padding:2px 10px;font-size:11px;font-style:italic;margin-left:6px;letter-spacing:.3px;}
 
-        .cycle-wrap{display:inline-flex;align-items:center;gap:14px;background:#070F22;border:1px solid #0F2040;border-radius:30px;padding:6px 8px;margin-top:24px;}
-        .cycle-label{font-size:13px;color:#4A6280;font-style:italic;padding:0 6px;cursor:pointer;user-select:none;transition:color .2s;}
-        .cycle-label-active{color:#F0F4FF;}
-        .cycle-switch{position:relative;width:46px;height:24px;background:#0D1B35;border-radius:14px;border:1px solid #1E3A5F;cursor:pointer;transition:background .2s;flex-shrink:0;}
+        .cycle-wrap{display:inline-flex;align-items:center;gap:14px;background:var(--bg-elev);border:1px solid var(--border-2);border-radius:30px;padding:6px 8px;margin-top:24px;}
+        .cycle-label{font-size:13px;color:var(--text-muted);font-style:italic;padding:0 6px;cursor:pointer;user-select:none;transition:color .2s;}
+        .cycle-label-active{color:var(--text-strong);}
+        .cycle-switch{position:relative;width:46px;height:24px;background:var(--line);border-radius:14px;border:1px solid var(--decor-subtle);cursor:pointer;transition:background .2s;flex-shrink:0;}
         .cycle-switch-on{background:linear-gradient(135deg,#4F8EF7,#7C3AED);border-color:transparent;}
         .cycle-knob{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s;}
         .cycle-knob-on{transform:translateX(22px);}
         .cycle-badge{font-size:11px;font-style:italic;color:#28C840;background:rgba(40,200,64,0.1);border:1px solid rgba(40,200,64,0.3);border-radius:14px;padding:3px 10px;letter-spacing:.3px;}
-        .plan-credits{font-size:14px;font-style:italic;color:#A8C8FC;margin:0 0 14px;padding:12px 0;border-top:1px solid #0F1E3A;border-bottom:1px solid #0F1E3A;}
+        .plan-credits{font-size:14px;font-style:italic;color:var(--link-soft);margin:0 0 14px;padding:12px 0;border-top:1px solid var(--border-1);border-bottom:1px solid var(--border-1);}
         .feats{list-style:none;display:flex;flex-direction:column;gap:9px;margin-bottom:24px;padding:0;flex-grow:1;}
-        .feats li{font-size:14px;color:#A8C8FC;display:flex;gap:9px;align-items:flex-start;font-style:italic;line-height:1.5;}
+        .feats li{font-size:14px;color:var(--link-soft);display:flex;gap:9px;align-items:flex-start;font-style:italic;line-height:1.5;}
         .feats li::before{content:"✓";color:#4F8EF7;font-weight:700;font-style:normal;flex-shrink:0;}
         .cta{width:100%;padding:13px;border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:500;font-style:italic;cursor:pointer;border:none;transition:opacity .2s;}
         .cta:disabled{opacity:.6;cursor:not-allowed;}
-        .cta-outline{background:transparent;border:1px solid #1E3A5F;color:#F0F4FF;}
+        .cta-outline{background:transparent;border:1px solid var(--decor-subtle);color:var(--text-strong);}
         .cta-outline:hover:not(:disabled){border-color:#4F8EF7;}
         .cta-filled{background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;}
-        .cta-current{background:#0D1B35;color:#4A6280;cursor:default;border:1px dashed #1E3A5F;}
+        .cta-current{background:var(--line);color:var(--text-muted);cursor:default;border:1px dashed var(--decor-subtle);}
 
-        .legend{margin-top:48px;color:#4A6280;font-size:14px;font-style:italic;line-height:1.9;max-width:680px;margin-left:auto;margin-right:auto;}
-        .legend strong{color:#A8C8FC;font-weight:500;}
-        .footer{padding:30px 44px;border-top:1px solid #0A1428;text-align:center;color:#1E3050;font-size:13px;font-style:italic;}
+        .legend{margin-top:48px;color:var(--text-muted);font-size:14px;font-style:italic;line-height:1.9;max-width:680px;margin-left:auto;margin-right:auto;}
+        .legend strong{color:var(--link-soft);font-weight:500;}
+        .footer{padding:30px 44px;border-top:1px solid var(--border-soft);text-align:center;color:var(--text-faint);font-size:13px;font-style:italic;}
 
         @media (max-width:1024px){.plans{grid-template-columns:repeat(2,1fr);}}
         @media (max-width:640px){
@@ -158,7 +158,7 @@ export default function PricingPage() {
         {loggedIn && (
           <div className="current">
             <span className="current-dot"></span>
-            Plan actuel : <strong style={{color:'#F0F4FF',fontStyle:'normal',marginLeft:4}}>{PLANS[currentPlan].label}</strong>
+            Plan actuel : <strong style={{color:'var(--text-strong)',fontStyle:'normal',marginLeft:4}}>{PLANS[currentPlan].label}</strong>
           </div>
         )}
 
@@ -240,8 +240,8 @@ export default function PricingPage() {
         </div>
 
         <p className="legend">
-          ✦ <strong>Génération à la carte</strong> : <strong>2 crédits par document</strong> en qualité standard, ou <strong>4 crédits par document</strong> en <strong>qualité premium</strong> (image scène en haute résolution, réservée aux plans payants). Coche autant de documents que tu veux, ne paie que ce que tu génères.<br />
-          ✦ <strong>Mails brandés</strong> (remerciement, marketing) — <strong>2 crédits</strong>, réservés aux plans payants (Solo et plus). Envoi via Gmail en un clic.<br />
+          ✦ <strong>Génération à la carte</strong> : <strong>4 crédits par document</strong> en qualité standard, ou <strong>8 crédits par document</strong> en <strong>qualité premium</strong> (image scène en haute résolution + texte travaillé lettre par lettre, réservée aux plans payants). Tarif identique sur tous les plans — coche autant de documents que tu veux, ne paie que ce que tu génères.<br />
+          ✦ <strong>Mails brandés</strong> (remerciement, marketing) — <strong>4 crédits</strong> (8 en premium), réservés aux plans payants (Solo et plus). Envoi via Gmail en un clic.<br />
           ✦ <strong>Régénération</strong> d'un document existant : <strong>2 crédits</strong>, à partir du plan Solo.<br />
           ✦ <strong>Analyse de marque</strong> : 1ère analyse <strong>offerte à vie</strong> à l'inscription, puis <strong>5 crédits</strong> (Starter), <strong>3 crédits</strong> (Solo), <strong>2 crédits</strong> (Studio), <strong>incluse</strong> (Agency).<br />
           ✦ <strong>Refill mensuel</strong> : les crédits du plan s'ajoutent <strong>1 fois par mois calendaire</strong>, déclenchés au login après l'échéance. Cumul possible : les crédits non utilisés ne sont pas effacés. <strong>Mois sans login = mois non rattrapé</strong> (1 seul refill par retour, même après une longue absence).<br />

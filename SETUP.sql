@@ -47,7 +47,11 @@ alter table profiles add column if not exists account_type text not null default
 -- Sémantique : 1 seul refill par login, mois manqués non rattrapés.
 alter table profiles add column if not exists credits_last_refill_at timestamptz;
 
--- 3) Trigger : 20 crédits à l'inscription
+-- 3) Trigger : 20 crédits de bienvenue + ligne profile (defaults) à l'inscription.
+-- Les 20 crédits sont un bonus unique offert au signup. Le refill mensuel
+-- Starter (creditsPerMonth=10, cf. lib/plans.ts) s'applique ensuite.
+-- Sans la ligne profile, les LEFT JOIN renvoient NULL sur plan/account_type/
+-- free_scrape_used alors qu'elles ont des defaults NOT NULL — d'où confusion.
 create or replace function init_user_credits()
 returns trigger
 language plpgsql
@@ -56,6 +60,9 @@ as $$
 begin
   insert into user_credits (user_id, credits)
   values (new.id, 20)
+  on conflict (user_id) do nothing;
+  insert into profiles (user_id)
+  values (new.id)
   on conflict (user_id) do nothing;
   return new;
 end;
@@ -69,6 +76,10 @@ create trigger on_auth_user_created
 -- Rattraper les utilisateurs déjà existants
 insert into user_credits (user_id, credits)
 select id, 20 from auth.users
+on conflict (user_id) do nothing;
+
+insert into profiles (user_id)
+select id from auth.users
 on conflict (user_id) do nothing;
 
 -- =========================================================

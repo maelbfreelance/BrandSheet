@@ -19,9 +19,9 @@ import {
 } from '@/lib/doc-render'
 
 const NOUVEAUTE_TYPES = new Set(['nouveaute'])
-/** Qualité 'high' : facturée 4 crédits / doc au lieu de 2, et réservée aux
- *  plans payants (cf. /pricing → marges calculées). */
-const HIGH_QUALITY_COST = 4
+/** Qualité 'high' : facturée 8 crédits / doc au lieu de 4 (tarif identique
+ *  pour tous les plans), et réservée aux plans payants (cf. /pricing). */
+const HIGH_QUALITY_COST = 8
 
 export async function POST(req: Request) {
   const { contactId, operationId, types, dealText, forceSceneRefresh, quality: rawQuality } = await req.json()
@@ -57,6 +57,7 @@ export async function POST(req: Request) {
 
     const { data: profile } = await supabaseAdmin.from('profiles').select('*').eq('user_id', userId).maybeSingle()
     const plan = profile?.plan || 'starter'
+    const accountType: 'freelance' | 'brand' = profile?.account_type === 'brand' ? 'brand' : 'freelance'
 
     // Gating mails : plan payant requis.
     const hasMail = validTypes.some((t) => MAIL_DOC_TYPES.has(t))
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
     }
 
     // Vérif crédits AVANT toute action (scène image + appels IA).
-    // Tarification : 2 crédits / doc en medium, 4 crédits / doc en high.
+    // Tarification : 4 crédits / doc en standard, 8 crédits / doc en premium.
     const perDoc = quality === 'high' ? HIGH_QUALITY_COST : PER_DOC_COST
     const cost = validTypes.length * perDoc
     const credits = await getCredits(userId)
@@ -110,7 +111,7 @@ export async function POST(req: Request) {
           { status: 400 },
         )
       }
-      sceneUrl = await generateSceneImage(buildScenePrompt(contact, operation), refs, userId, operation.id, quality)
+      sceneUrl = await generateSceneImage(buildScenePrompt(contact, operation, accountType), refs, userId, operation.id, quality)
       await supabaseAdmin
         .from('operations')
         .update({ background_image_url: sceneUrl, background_image_quality: quality })
@@ -128,22 +129,30 @@ export async function POST(req: Request) {
       )
     }
 
-    const prompts = buildDocPrompts(contact, profile, operation, { dealText: dealText || operation?.deal_text || null })
+    const prompts = buildDocPrompts(contact, profile, operation, { dealText: dealText || operation?.deal_text || null, accountType })
     const results: Record<string, string> = {}
+
+    // Qualité 'high' : on monte d'un cran le modèle (Sonnet 4.6 au lieu de Haiku
+    // 4.5) ET on injecte une consigne de soin maximal, pour que la prime payée
+    // par l'utilisateur produise réellement un texte plus travaillé.
+    const textModel = quality === 'high' ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001'
+    const precisionSuffix = quality === 'high'
+      ? `\n\nQUALITÉ PREMIUM — CONSIGNE DE SOIN MAXIMAL : ce document est facturé en qualité premium. Avant d'envoyer ta réponse, RELIS-LA mentalement lettre par lettre. Pèse chaque mot, vérifie chaque virgule, chaque accord, chaque accent. Aucune faute d'orthographe, aucune coquille, aucune répétition de mot. Le rythme des phrases doit être travaillé (varie les longueurs, évite les enchaînements plats). Les tournures doivent être nettes, précises, élégantes — au niveau d'un copywriter senior, pas d'un brouillon. Aucun cliché ("n'hésitez pas à...", "dans le cadre de...", "au plaisir de..." sauf si parfaitement justifié). Concentre-toi VRAIMENT sur la qualité de chaque phrase.`
+      : ''
 
     for (const docType of validTypes) {
       const prompt = prompts[docType]
       if (!prompt) continue
       const message = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+        model: textModel,
         max_tokens: 2000,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: prompt + precisionSuffix }],
       })
       const content = message.content[0]
       if (content.type !== 'text') continue
 
       const bodyHtml = sanitizeBody(content.text)
-      const fullHtml = buildHtml({ brand: contact, profile, docType, sceneUrl, bodyHtml, productImageUrl })
+      const fullHtml = buildHtml({ brand: contact, profile, docType, sceneUrl, bodyHtml, productImageUrl, accountType })
       results[docType] = fullHtml
 
       await supabaseAdmin.from('documents').upsert(

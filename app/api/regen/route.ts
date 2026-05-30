@@ -27,6 +27,7 @@ export async function POST(req: Request) {
 
     const { data: profile } = await supabaseAdmin.from('profiles').select('*').eq('user_id', userId).maybeSingle()
     const plan = profile?.plan || 'starter'
+    const accountType: 'freelance' | 'brand' = profile?.account_type === 'brand' ? 'brand' : 'freelance'
     if (plan === 'starter') {
       return NextResponse.json(
         { error: 'plan_required', message: 'La régénération nécessite un plan payant (Solo et plus).' },
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
           { status: 400 },
         )
       }
-      sceneUrl = await generateSceneImage(buildScenePrompt(contact, operation), refs, userId, operation.id)
+      sceneUrl = await generateSceneImage(buildScenePrompt(contact, operation, accountType), refs, userId, operation.id)
       await supabaseAdmin
         .from('operations')
         .update({ background_image_url: sceneUrl })
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
       ? operation.images[0]
       : null
 
-    const prompts = buildDocPrompts(contact, profile, operation)
+    const prompts = buildDocPrompts(contact, profile, operation, { accountType })
     const prompt = prompts[doc.type]
     if (!prompt) return NextResponse.json({ error: 'Type de document inconnu' }, { status: 400 })
 
@@ -84,7 +85,7 @@ export async function POST(req: Request) {
     if (content.type !== 'text') return NextResponse.json({ error: 'Réponse IA invalide' }, { status: 500 })
 
     const bodyHtml = sanitizeBody(content.text)
-    const fullHtml = buildHtml({ brand: contact, profile, docType: doc.type, sceneUrl, bodyHtml, productImageUrl })
+    const fullHtml = buildHtml({ brand: contact, profile, docType: doc.type, sceneUrl, bodyHtml, productImageUrl, accountType })
 
     await supabaseAdmin.from('documents').update({ content: fullHtml, created_at: new Date().toISOString() }).eq('id', docId)
 

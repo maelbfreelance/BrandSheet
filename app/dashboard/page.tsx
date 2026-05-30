@@ -130,51 +130,51 @@ export default function Dashboard() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
         *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:'Cormorant Garamond',serif;background:#050B18;color:#F0F4FF;}
-        .dash-nav{display:flex;justify-content:space-between;align-items:center;padding:20px 44px;border-bottom:1px solid #0F1E3A;}
+        body{font-family:'Cormorant Garamond',serif;background:var(--bg-deep);color:var(--text-strong);}
+        .dash-nav{display:flex;justify-content:space-between;align-items:center;padding:20px 44px;border-bottom:1px solid var(--border-1);}
         .dash-logo{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;background:linear-gradient(135deg,#4F8EF7,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
         .dash-user{display:flex;align-items:center;gap:16px;}
-        .dash-email{font-size:14px;color:#4A6280;font-style:italic;}
-        .dash-logout{font-size:14px;color:#1E3050;font-style:italic;cursor:pointer;background:none;border:none;font-family:'Cormorant Garamond',serif;}
-        .dash-logout:hover{color:#F0F4FF;}
-        .dash-credits{display:flex;align-items:center;gap:6px;background:#0D1B35;border:1px solid #0F2040;border-radius:20px;padding:6px 14px;cursor:pointer;transition:border-color .2s;}
+        .dash-email{font-size:14px;color:var(--text-muted);font-style:italic;}
+        .dash-logout{font-size:14px;color:var(--text-faint);font-style:italic;cursor:pointer;background:none;border:none;font-family:'Cormorant Garamond',serif;}
+        .dash-logout:hover{color:var(--text-strong);}
+        .dash-credits{display:flex;align-items:center;gap:6px;background:var(--line);border:1px solid var(--border-2);border-radius:20px;padding:6px 14px;cursor:pointer;transition:border-color .2s;}
         .dash-credits:hover{border-color:#4F8EF7;}
         .dash-credits-icon{color:#4F8EF7;font-size:13px;}
-        .dash-credits-value{font-family:'Playfair Display',serif;font-weight:700;font-size:14px;color:#F0F4FF;}
-        .dash-credits-label{font-size:13px;color:#4A6280;font-style:italic;}
-        .dash-link{font-size:14px;color:#4A6280;font-style:italic;cursor:pointer;}
-        .dash-link:hover{color:#F0F4FF;}
+        .dash-credits-value{font-family:'Playfair Display',serif;font-weight:700;font-size:14px;color:var(--text-strong);}
+        .dash-credits-label{font-size:13px;color:var(--text-muted);font-style:italic;}
+        .dash-link{font-size:14px;color:var(--text-muted);font-style:italic;cursor:pointer;}
+        .dash-link:hover{color:var(--text-strong);}
         .dash-body{max-width:900px;margin:0 auto;padding:60px 24px;}
         .dash-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:40px;}
         .dash-welcome{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;}
         .dash-welcome em{font-style:italic;background:linear-gradient(135deg,#4F8EF7,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
         .dash-btn{background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;padding:12px 24px;border-radius:10px;font-size:16px;font-family:'Cormorant Garamond',serif;font-style:italic;border:none;cursor:pointer;}
-        .dash-empty{background:#070F22;border:1px dashed #0F2040;border-radius:16px;padding:60px;text-align:center;}
+        .dash-empty{background:var(--bg-elev);border:1px dashed var(--border-2);border-radius:16px;padding:60px;text-align:center;}
         .dash-empty-icon{font-size:40px;margin-bottom:16px;}
         .dash-empty-h{font-family:'Playfair Display',serif;font-size:22px;margin-bottom:10px;}
-        .dash-empty-p{color:#4A6280;font-size:16px;font-style:italic;}
+        .dash-empty-p{color:var(--text-muted);font-size:16px;font-style:italic;}
         .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:100;}
-        .modal{background:#070F22;border:1px solid #0F2040;border-radius:20px;padding:40px;max-width:480px;width:90%;}
+        .modal{background:var(--bg-elev);border:1px solid var(--border-2);border-radius:20px;padding:40px;max-width:480px;width:90%;}
         .modal-h{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;margin-bottom:8px;}
-        .modal-sub{color:#4A6280;font-size:15px;font-style:italic;margin-bottom:28px;}
-        .modal-label{font-size:14px;color:#6B84AA;font-style:italic;margin-bottom:8px;display:block;}
-        .modal-input{width:100%;background:#050B18;border:1px solid #0F2040;border-radius:10px;padding:14px 16px;font-size:15px;font-family:'Cormorant Garamond',serif;color:#F0F4FF;outline:none;margin-bottom:20px;}
-        .modal-input::placeholder{color:#1E3050;font-style:italic;}
+        .modal-sub{color:var(--text-muted);font-size:15px;font-style:italic;margin-bottom:28px;}
+        .modal-label{font-size:14px;color:var(--text-mid);font-style:italic;margin-bottom:8px;display:block;}
+        .modal-input{width:100%;background:var(--bg-deep);border:1px solid var(--border-2);border-radius:10px;padding:14px 16px;font-size:15px;font-family:'Cormorant Garamond',serif;color:var(--text-strong);outline:none;margin-bottom:20px;}
+        .modal-input::placeholder{color:var(--text-faint);font-style:italic;}
         .modal-actions{display:flex;gap:12px;justify-content:flex-end;}
-        .modal-cancel{background:transparent;border:1px solid #0F2040;color:#4A6280;padding:12px 20px;border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;cursor:pointer;}
+        .modal-cancel{background:transparent;border:1px solid var(--border-2);color:var(--text-muted);padding:12px 20px;border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;cursor:pointer;}
         .modal-submit{background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;padding:12px 24px;border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;border:none;cursor:pointer;}
         .modal-delete{padding:12px 24px;border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;border:none;cursor:pointer;transition:background .2s;}
-        .modal-check{display:flex;align-items:center;gap:10px;margin:20px 0;cursor:pointer;font-size:15px;color:#6B84AA;font-style:italic;}
+        .modal-check{display:flex;align-items:center;gap:10px;margin:20px 0;cursor:pointer;font-size:15px;color:var(--text-mid);font-style:italic;}
         .modal-check input{width:16px;height:16px;cursor:pointer;}
         .modal-warn{color:#F7954F;font-size:14px;font-style:italic;margin-bottom:20px;padding:12px;background:#1A0F08;border-radius:8px;border:1px solid #3A2010;}
         .contact-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
-        .contact-card{background:#070F22;border:1px solid #0F2040;border-radius:16px;padding:24px;position:relative;transition:border-color .2s;}
+        .contact-card{background:var(--bg-elev);border:1px solid var(--border-2);border-radius:16px;padding:24px;position:relative;transition:border-color .2s;}
         .contact-card:hover{border-color:#4F8EF7;}
         .contact-clickable{cursor:pointer;}
         .contact-name{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:6px;}
-        .contact-url{font-size:13px;color:#4A6280;font-style:italic;margin-bottom:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .contact-url{font-size:13px;color:var(--text-muted);font-style:italic;margin-bottom:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .contact-status{font-size:12px;color:#4F8EF7;font-style:italic;}
-        .contact-delete{position:absolute;top:12px;right:12px;background:transparent;border:none;color:#1E3050;cursor:pointer;font-size:18px;padding:4px;line-height:1;}
+        .contact-delete{position:absolute;top:12px;right:12px;background:transparent;border:none;color:var(--text-faint);cursor:pointer;font-size:18px;padding:4px;line-height:1;}
         .contact-delete:hover{color:#dc2626;}
       `}</style>
 
@@ -253,7 +253,7 @@ export default function Dashboard() {
               <button className="modal-cancel" onClick={() => setDeleteModal(null)}>Annuler</button>
               <button
                 className="modal-delete"
-                style={{background: deleteConfirmed ? '#dc2626' : '#1E3050', color: '#fff', cursor: deleteConfirmed ? 'pointer' : 'not-allowed'}}
+                style={{background: deleteConfirmed ? '#dc2626' : 'var(--text-faint)', color: '#fff', cursor: deleteConfirmed ? 'pointer' : 'not-allowed'}}
                 onClick={confirmDelete}
               >
                 Supprimer définitivement

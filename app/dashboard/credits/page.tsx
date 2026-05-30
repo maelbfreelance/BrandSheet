@@ -9,19 +9,53 @@ export default function CreditsPage() {
   const [loadingPack, setLoadingPack] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        window.location.href = '/login'
-        return
-      }
-      setUser(data.user)
-      supabase
+    let mounted = true
+    let kicked = false
+
+    const onLoggedIn = async (authUser: any) => {
+      if (!mounted) return
+      setUser(authUser)
+      const { data: c } = await supabase
         .from('user_credits')
         .select('credits')
-        .eq('user_id', data.user.id)
+        .eq('user_id', authUser.id)
         .maybeSingle()
-        .then(({ data: c }) => setCredits(c?.credits ?? 0))
+      if (!mounted) return
+      if (c) {
+        setCredits(c.credits)
+      } else {
+        // Fallback : ligne absente (trigger init_user_credits pas joué).
+        // user_id seul est autorisé à l'INSERT côté client (column-grant RLS),
+        // 'credits' prend sa valeur via le default 20.
+        await supabase.from('user_credits').insert({ user_id: authUser.id })
+        if (mounted) setCredits(20)
+      }
+    }
+
+    // Même pattern que /dashboard : getSession() (sync localStorage, pas de
+    // round-trip réseau) + onAuthStateChange. getUser() seul était fragile —
+    // si la session n'est pas encore propagée, la query restait pending et
+    // l'UI restait bloquée sur "… crédits".
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return
+      if (data.session?.user) {
+        onLoggedIn(data.session.user)
+      } else {
+        setTimeout(() => {
+          if (!mounted || kicked || user) return
+          kicked = true
+          window.location.href = '/login'
+        }, 1200)
+      }
     })
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return
+      if (session?.user) onLoggedIn(session.user)
+    })
+
+    return () => { mounted = false; sub.subscription.unsubscribe() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleBuy = async (pack: CreditPack) => {
@@ -61,36 +95,36 @@ export default function CreditsPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
         *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:'Cormorant Garamond',serif;background:#050B18;color:#F0F4FF;}
-        .nav{display:flex;justify-content:space-between;align-items:center;padding:20px 44px;border-bottom:1px solid #0F1E3A;}
+        body{font-family:'Cormorant Garamond',serif;background:var(--bg-deep);color:var(--text-strong);}
+        .nav{display:flex;justify-content:space-between;align-items:center;padding:20px 44px;border-bottom:1px solid var(--border-1);}
         .logo{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;background:linear-gradient(135deg,#4F8EF7,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-        .back{font-size:14px;color:#4A6280;font-style:italic;cursor:pointer;background:none;border:none;font-family:'Cormorant Garamond',serif;}
-        .back:hover{color:#F0F4FF;}
+        .back{font-size:14px;color:var(--text-muted);font-style:italic;cursor:pointer;background:none;border:none;font-family:'Cormorant Garamond',serif;}
+        .back:hover{color:var(--text-strong);}
         .body{max-width:900px;margin:0 auto;padding:60px 24px;text-align:center;}
         .h1{font-family:'Playfair Display',serif;font-size:34px;font-weight:700;margin-bottom:8px;}
         .h1 em{font-style:italic;background:linear-gradient(135deg,#4F8EF7,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-        .sub{color:#4A6280;font-style:italic;margin-bottom:36px;}
-        .balance{display:inline-block;background:#070F22;border:1px solid #0F2040;border-radius:14px;padding:18px 28px;margin-bottom:44px;}
-        .balance-label{font-size:13px;color:#6B84AA;font-style:italic;margin-bottom:4px;}
+        .sub{color:var(--text-muted);font-style:italic;margin-bottom:36px;}
+        .balance{display:inline-block;background:var(--bg-elev);border:1px solid var(--border-2);border-radius:14px;padding:18px 28px;margin-bottom:44px;}
+        .balance-label{font-size:13px;color:var(--text-mid);font-style:italic;margin-bottom:4px;}
         .balance-value{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;}
         .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px;}
         @media(max-width:1100px){.grid{grid-template-columns:repeat(3,1fr);}}
         @media(max-width:820px){.grid{grid-template-columns:repeat(2,1fr);}}
         @media(max-width:520px){.grid{grid-template-columns:1fr;}}
-        .pack{background:#070F22;border:1px solid #0F2040;border-radius:16px;padding:22px 18px;text-align:center;position:relative;transition:border-color .2s, transform .15s;}
+        .pack{background:var(--bg-elev);border:1px solid var(--border-2);border-radius:16px;padding:22px 18px;text-align:center;position:relative;transition:border-color .2s, transform .15s;}
         .pack:hover{border-color:#4F8EF7;transform:translateY(-2px);}
         .pack-popular{border-color:#7C3AED;box-shadow:0 0 0 1px rgba(124,58,237,0.25);}
         .pack-tag{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;font-size:10px;padding:4px 10px;border-radius:20px;font-style:italic;white-space:nowrap;letter-spacing:.3px;}
         .pack-h{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:6px;}
-        .pack-credits{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;line-height:1;color:#A8C8FC;margin-bottom:2px;}
-        .pack-credits-label{font-size:12px;color:#6B84AA;font-style:italic;margin-bottom:14px;letter-spacing:.5px;}
+        .pack-credits{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;line-height:1;color:var(--link-soft);margin-bottom:2px;}
+        .pack-credits-label{font-size:12px;color:var(--text-mid);font-style:italic;margin-bottom:14px;letter-spacing:.5px;}
         .pack-price{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;margin-bottom:2px;}
-        .pack-price em{font-size:14px;font-style:italic;color:#4A6280;font-weight:400;}
-        .pack-rate{font-size:11px;color:#1E3050;font-style:italic;margin-bottom:18px;}
+        .pack-price em{font-size:14px;font-style:italic;color:var(--text-muted);font-weight:400;}
+        .pack-rate{font-size:11px;color:var(--text-faint);font-style:italic;margin-bottom:18px;}
         .pack-btn{width:100%;padding:11px;border-radius:9px;background:linear-gradient(135deg,#4F8EF7,#7C3AED);color:#fff;font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;border:none;cursor:pointer;}
         .pack-btn:disabled{opacity:.6;cursor:not-allowed;}
-        .hint{color:#1E3050;font-size:13px;font-style:italic;margin-top:10px;}
-        .legend{margin-top:36px;font-size:13px;color:#4A6280;font-style:italic;line-height:1.8;}
+        .hint{color:var(--text-faint);font-size:13px;font-style:italic;margin-top:10px;}
+        .legend{margin-top:36px;font-size:13px;color:var(--text-muted);font-style:italic;line-height:1.8;}
       `}</style>
 
       <nav className="nav">
@@ -100,7 +134,7 @@ export default function CreditsPage() {
 
       <div className="body">
         <h1 className="h1">Recharger en <em>crédits</em></h1>
-        <p className="sub">Génération à la carte : <strong style={{color:'#A8C8FC',fontWeight:500,fontStyle:'normal'}}>2 crédits par document</strong>. Une régénération coûte <strong style={{color:'#A8C8FC',fontWeight:500,fontStyle:'normal'}}>2 crédits</strong>.</p>
+        <p className="sub">Génération à la carte : <strong style={{color:'var(--link-soft)',fontWeight:500,fontStyle:'normal'}}>4 crédits par document</strong> (8 en qualité premium). Une régénération coûte <strong style={{color:'var(--link-soft)',fontWeight:500,fontStyle:'normal'}}>2 crédits</strong>.</p>
 
         <div className="balance">
           <div className="balance-label">Solde actuel</div>

@@ -3,8 +3,9 @@ import { PLANS, type PlanId } from './plans'
 
 export const MODIFICATION_COST = 2
 export const INITIAL_CREDITS = 20
-/** Coût par document sélectionné dans la génération à la carte. */
-export const PER_DOC_COST = 2
+/** Coût par document sélectionné dans la génération à la carte (qualité standard).
+ *  Identique pour tous les plans. La qualité premium est facturée HIGH_QUALITY_COST. */
+export const PER_DOC_COST = 4
 
 export async function getCredits(userId: string): Promise<number> {
   const { data } = await supabase
@@ -62,7 +63,8 @@ export async function addCredits(userId: string, amount: number): Promise<number
  * - 1 SEUL refill par appel, peu importe le temps écoulé.
  * - Pas de rattrapage des mois manqués (à clarifier dans les T&C).
  * - Cumul : les crédits s'additionnent au solde existant.
- * - Plan Starter inclus (20 crédits / mois).
+ * - Plan Starter inclus (10 crédits / mois ; 20 crédits initiaux à l'inscription
+ *   via le trigger SQL, hors refill).
  *
  * Retourne le nombre de crédits ajoutés (0 si aucun refill dû).
  */

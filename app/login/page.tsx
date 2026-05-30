@@ -17,14 +17,14 @@ export default function Login() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
         *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:'Cormorant Garamond',serif;background:#050B18;color:#F0F4FF;min-height:100vh;display:flex;align-items:center;justify-content:center;}
-        .login-wrap{background:#070F22;border:1px solid #0F2040;border-radius:20px;padding:48px 40px;max-width:400px;width:100%;text-align:center;}
+        body{font-family:'Cormorant Garamond',serif;background:var(--bg-deep);color:var(--text-strong);min-height:100vh;display:flex;align-items:center;justify-content:center;}
+        .login-wrap{background:var(--bg-elev);border:1px solid var(--border-2);border-radius:20px;padding:48px 40px;max-width:400px;width:100%;text-align:center;}
         .login-logo{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;background:linear-gradient(135deg,#4F8EF7,#7C3AED);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:32px;}
         .login-h{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;margin-bottom:10px;}
-        .login-sub{color:#4A6280;font-size:16px;font-style:italic;font-weight:300;margin-bottom:36px;line-height:1.7;}
-        .login-btn{width:100%;padding:16px;border-radius:12px;border:1px solid #0F2040;background:#0D1B35;color:#F0F4FF;font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;transition:border-color .2s;}
+        .login-sub{color:var(--text-muted);font-size:16px;font-style:italic;font-weight:300;margin-bottom:36px;line-height:1.7;}
+        .login-btn{width:100%;padding:16px;border-radius:12px;border:1px solid var(--border-2);background:var(--line);color:var(--text-strong);font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;transition:border-color .2s;}
         .login-btn:hover{border-color:#4F8EF7;}
-        .login-hint{font-size:13px;color:#1E3050;margin-top:20px;font-style:italic;}
+        .login-hint{font-size:13px;color:var(--text-faint);margin-top:20px;font-style:italic;}
       `}</style>
       <div className="login-wrap">
         <div className="login-logo">BrandSheet</div>

@@ -12,15 +12,40 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  --bg-deep: #050B18;
+  --bg-elev: #070F22;
+  --border-1: #0F1E3A;
+  --border-2: #0F2040;
+  --border-soft: #0A1428;
+  --text-strong: #F0F4FF;
+  --text-muted: #4A6280;
+  --text-mid: #6B84AA;
+  --text-faint: #1E3050;
+  --text-ghost: #0D1E38;
+  --decor-subtle: #1E3A5F;
+  --line: #0D1B35;
+  --link-soft: #A8C8FC;
+}
+
+body.bs-day {
+  --bg-deep: #F0F4FF;
+  --bg-elev: #F0F4FF;
+  --border-1: #A8C8FC;
+  --border-2: #6B84AA;
+  --border-soft: #A8C8FC;
+  --text-strong: #050B18;
+  --text-muted: #4A6280;
+  --text-mid: #6B84AA;
+  --text-faint: #6B84AA;
+  --text-ghost: #A8C8FC;
+  --decor-subtle: #A8C8FC;
+  --line: #A8C8FC;
+  --link-soft: #4F8EF7;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg-deep);
+  color: var(--text-strong);
   font-family: Arial, Helvetica, sans-serif;
 }
