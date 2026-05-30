@@ -13,7 +13,9 @@ export const DOC_TYPE_LABELS: Record<string, string> = {
   // Mails actifs (réservés aux plans payants)
   mail_remerciement: 'Mail remerciement',
   mail_marketing: 'Mail marketing',
-  // Legacy — conservés pour afficher proprement les anciens documents historiques
+  // Labels conservés pour que les anciens documents s'affichent proprement dans
+  // l'historique. Les prompts associés ont été retirés : régénérer un de ces
+  // anciens docs est désormais impossible (acceptable, ce sont des archives).
   bienvenue: 'Mail de bienvenue',
   avis: 'Demande d\'avis',
   cgv: 'Conditions Générales de Vente',
@@ -36,12 +38,12 @@ export type ActiveDocType = (typeof ACTIVE_DOC_TYPES)[number]
 export const MAIL_DOC_TYPES = new Set<string>(['mail_remerciement', 'mail_marketing'])
 
 /** Docs avec bloc 5 étoiles toujours visible. */
-const FIVE_STARS_DOCS = new Set<string>(['remerciement', 'mail_remerciement', 'avis'])
+const FIVE_STARS_DOCS = new Set<string>(['remerciement', 'mail_remerciement'])
 
 // Mails courts → image en pleine page, texte par-dessus.
 // Fiches → image en bandeau hero + corps en section propre lisible.
 // Nouveauté → layout dédié (image produit centrée XL + mot "NOUVEAUTÉ").
-const OVERLAY_DOCS = new Set(['mail_remerciement', 'mail_marketing', 'bienvenue', 'avis'])
+const OVERLAY_DOCS = new Set(['mail_remerciement', 'mail_marketing'])
 const NOUVEAUTE_DOCS = new Set(['nouveaute'])
 
 export function escapeHtml(s: string): string {
@@ -573,11 +575,6 @@ export function buildDocPrompts(brand: any, profile: any, operation: any, opts?:
     // ===== MAILS (plans payants) =====
     mail_remerciement: `Rédige un mail de remerciement post-prestation. ${mailContract} Un bloc 5 étoiles visuel sera ajouté automatiquement à la fin, invite poliment à laisser une note sans l'afficher en texte. ${brandInfo}. ${issuerInfo} Contexte: ${o}. 100 mots max. Ton ${b.brand_tone}.`,
     mail_marketing: `Rédige un mail marketing personnalisé qui s'appuie SUR LE CONTEXTE de l'opération ci-dessous (produit, public, ambiance). ${mailContract} Le corps doit accrocher dès la 1ère phrase, présenter le bénéfice clair de l'opération, et finir par un appel à l'action net. ${brandInfo}. ${issuerInfo} Contexte de l'opération: ${o}. 130 mots max. Ton ${b.brand_tone}.`,
-
-    // ===== Legacy (conservés pour régénération d'anciens docs) =====
-    bienvenue: `Rédige le CORPS HTML d'un mail de bienvenue pour un nouveau client. Commence par <h2>Objet : ...</h2> puis le corps en <p>. ${brandInfo}. ${issuerInfo} Contexte: ${o}. 150 mots max. Ton ${b.brand_tone}. ${htmlContract}`,
-    avis: `Rédige le CORPS HTML d'un mail de demande d'avis client (un bloc visuel 5 étoiles sera ajouté automatiquement après ton texte, ne le mentionne pas mais invite à laisser une note). Commence par <h2>Objet : ...</h2>. ${brandInfo}. ${issuerInfo} Contexte: ${o}. 100 mots max. Ton ${b.brand_tone}. ${htmlContract}`,
-    cgv: `Génère des CGV conformes au droit français, structurées avec <h2> pour chaque article. Inclure: objet, prix/paiement, livraison, rétractation, responsabilités, RGPD, litiges, identification du prestataire. Termine par <p><em>Disclaimer : ces CGV sont à valider par un professionnel juridique.</em></p>. ${brandInfo}. ${issuerInfo} Activité: ${b.brand_sector}. ${htmlContract}`,
   }
 }
 

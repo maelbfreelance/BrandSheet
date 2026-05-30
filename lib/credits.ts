@@ -1,6 +1,5 @@
 import { supabaseAdmin as supabase } from './supabase-admin'
 
-export const GENERATION_COST = 10
 export const MODIFICATION_COST = 2
 export const INITIAL_CREDITS = 20
 /** Coût par document sélectionné dans la génération à la carte. */

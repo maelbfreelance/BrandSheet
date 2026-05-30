@@ -223,7 +223,9 @@ export default function PricingPage() {
         </div>
 
         <p className="legend">
-          ✦ Une <strong>génération complète</strong> (6 documents brandés + visuel IA) coûte <strong>10 crédits</strong>. Une <strong>régénération ponctuelle</strong> coûte <strong>2 crédits</strong> et n'est disponible qu'à partir du plan Solo.<br />
+          ✦ <strong>Génération à la carte</strong> : <strong>2 crédits par document</strong> sélectionné (fiches : facture, devis, relance, remerciement, nouveauté, forfait). Coche autant de documents que tu veux, ne paie que ce que tu génères.<br />
+          ✦ <strong>Mails brandés</strong> (remerciement, marketing) — <strong>2 crédits</strong>, réservés aux plans payants (Solo et plus). Envoi via Gmail en un clic.<br />
+          ✦ <strong>Régénération</strong> d'un document existant : <strong>2 crédits</strong>, à partir du plan Solo.<br />
           ✦ <strong>Analyse de marque</strong> : 1ère analyse <strong>offerte à vie</strong> à l'inscription, puis <strong>5 crédits</strong> (Starter), <strong>3 crédits</strong> (Solo), <strong>2 crédits</strong> (Studio), <strong>incluse</strong> (Agency).<br />
           {loggedIn === false && '✦ Inscription gratuite, sans carte bancaire pour commencer.'}
           {loggedIn === true && '✦ Le paiement Stripe sera disponible prochainement.'}
