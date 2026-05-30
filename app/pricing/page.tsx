@@ -23,22 +23,39 @@ export default function PricingPage() {
     })
   }, [])
 
-  const handleChoose = (planId: PlanId) => {
+  const handleChoose = async (planId: PlanId) => {
     if (loggedIn === false) {
       window.location.href = '/login'
       return
     }
-    if (planId === currentPlan) return
+    if (planId === currentPlan || planId === 'starter') return
     setBusyPlan(planId)
-    // TODO: brancher Stripe Checkout côté serveur
-    const plan = PLANS[planId]
-    const billingLabel = cycle === 'annual' && plan.monthlyPrice > 0
-      ? `${formatEUR(plan.annualYearlyPrice)}/an`
-      : `${plan.price}/mois`
-    setTimeout(() => {
-      alert(`Stripe Checkout à brancher — passage au plan ${plan.label} (${billingLabel})`)
+    try {
+      const { data } = await supabase.auth.getUser()
+      if (!data.user) {
+        window.location.href = '/login'
+        return
+      }
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId, cycle, userId: data.user.id }),
+      })
+      const payload = await res.json()
+      if (!res.ok) {
+        alert(payload.message || payload.error || 'Erreur Stripe — voir SETUP_STRIPE.md')
+        return
+      }
+      if (payload.url) {
+        window.location.href = payload.url
+        return
+      }
+      alert('Aucune URL Stripe renvoyée.')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e))
+    } finally {
       setBusyPlan(null)
-    }, 400)
+    }
   }
 
   const ctaLabel = (planId: PlanId) => {

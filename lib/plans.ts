@@ -31,6 +31,33 @@ export type PlanInfo = {
   popular?: boolean
 }
 
+/** Price IDs Stripe par plan/cycle. Lus depuis les env vars : permettent au
+ *  squelette de fonctionner même sans Stripe configuré (undefined → la route
+ *  /api/stripe/checkout renverra 503). */
+export function getStripePriceId(planId: PlanId, cycle: BillingCycle): string | undefined {
+  const upper = planId.toUpperCase()
+  return cycle === 'annual'
+    ? process.env[`STRIPE_PRICE_${upper}_ANNUAL`]
+    : process.env[`STRIPE_PRICE_${upper}_MONTHLY`]
+}
+
+/** Packs de crédits one-shot (page /dashboard/credits). */
+export type CreditPack = {
+  id: string
+  label: string
+  credits: number
+  price: number
+  tag?: string
+}
+export const CREDIT_PACKS: CreditPack[] = [
+  { id: 'starter', label: 'Starter', credits: 50, price: 9 },
+  { id: 'pro', label: 'Pro', credits: 150, price: 19, tag: 'Populaire' },
+  { id: 'studio', label: 'Studio', credits: 400, price: 39 },
+]
+export function getStripePackPriceId(packId: string): string | undefined {
+  return process.env[`STRIPE_PRICE_PACK_${packId.toUpperCase()}`]
+}
+
 export const FREE_SCRAPE_LIMIT = 1
 
 export const PLANS: Record<PlanId, PlanInfo> = {

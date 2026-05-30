@@ -1,14 +1,7 @@
 'use client'
 import React, { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-
-type Pack = { id: string; credits: number; price: number; label: string; tag?: string }
-
-const PACKS: Pack[] = [
-  { id: 'starter', credits: 50, price: 9, label: 'Starter' },
-  { id: 'pro', credits: 150, price: 19, label: 'Pro', tag: 'Populaire' },
-  { id: 'studio', credits: 400, price: 39, label: 'Studio' },
-]
+import { CREDIT_PACKS, type CreditPack } from '@/lib/plans'
 
 export default function CreditsPage() {
   const [user, setUser] = useState<any>(null)
@@ -31,13 +24,34 @@ export default function CreditsPage() {
     })
   }, [])
 
-  const handleBuy = async (pack: Pack) => {
+  const handleBuy = async (pack: CreditPack) => {
     setLoadingPack(pack.id)
-    // TODO: brancher Stripe Checkout — créer une session côté serveur puis rediriger
-    setTimeout(() => {
-      alert(`Stripe Checkout à brancher — pack ${pack.label} (${pack.credits} crédits, ${pack.price}€)`)
+    try {
+      const { data } = await supabase.auth.getUser()
+      if (!data.user) {
+        window.location.href = '/login'
+        return
+      }
+      const res = await fetch('/api/stripe/credits-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ packId: pack.id, userId: data.user.id }),
+      })
+      const payload = await res.json()
+      if (!res.ok) {
+        alert(payload.message || payload.error || 'Erreur Stripe — voir SETUP_STRIPE.md')
+        return
+      }
+      if (payload.url) {
+        window.location.href = payload.url
+        return
+      }
+      alert('Aucune URL Stripe renvoyée.')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e))
+    } finally {
       setLoadingPack(null)
-    }, 400)
+    }
   }
 
   if (!user) return null
@@ -82,7 +96,7 @@ export default function CreditsPage() {
 
       <div className="body">
         <h1 className="h1">Recharger en <em>crédits</em></h1>
-        <p className="sub">Une génération complète coûte 10 crédits. Une modification ponctuelle en coûte 2.</p>
+        <p className="sub">Génération à la carte : <strong style={{color:'#A8C8FC',fontWeight:500,fontStyle:'normal'}}>2 crédits par document</strong>. Une régénération coûte <strong style={{color:'#A8C8FC',fontWeight:500,fontStyle:'normal'}}>2 crédits</strong>.</p>
 
         <div className="balance">
           <div className="balance-label">Solde actuel</div>
@@ -90,7 +104,7 @@ export default function CreditsPage() {
         </div>
 
         <div className="grid">
-          {PACKS.map((p) => (
+          {CREDIT_PACKS.map((p) => (
             <div key={p.id} className="pack">
               {p.tag && <div className="pack-tag">{p.tag}</div>}
               <div className="pack-h">{p.label}</div>
