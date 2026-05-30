@@ -7,8 +7,8 @@ export default function Login() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: 'https://brandsheet.fr/dashboard'
-      }
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
     })
   }
 

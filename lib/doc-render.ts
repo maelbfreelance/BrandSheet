@@ -1,3 +1,4 @@
+import { toFile } from 'openai'
 import { supabaseAdmin } from './supabase-admin'
 import { getOpenAI } from './openai'
 
@@ -393,10 +394,31 @@ async function uploadImage(buffer: Buffer, userId: string, opId: string): Promis
   return pub.publicUrl
 }
 
-export async function generateSceneImage(prompt: string, userId: string, opId: string): Promise<string> {
+export async function generateSceneImage(
+  prompt: string,
+  refImageUrls: string[],
+  userId: string,
+  opId: string,
+): Promise<string> {
+  if (!refImageUrls || refImageUrls.length === 0) {
+    throw new Error("Aucune image de référence : ajoute au moins une photo du produit/service à l'opération")
+  }
   const openai = getOpenAI()
-  const result = await openai.images.generate({
+
+  const refs = await Promise.all(
+    refImageUrls.slice(0, 4).map(async (url, i) => {
+      const resp = await fetch(url)
+      if (!resp.ok) throw new Error(`Impossible de lire l'image de référence ${i + 1} (HTTP ${resp.status})`)
+      const buf = Buffer.from(await resp.arrayBuffer())
+      const type = resp.headers.get('content-type') || 'image/png'
+      const ext = type.includes('jpeg') || type.includes('jpg') ? 'jpg' : type.includes('webp') ? 'webp' : 'png'
+      return toFile(buf, `ref-${i}.${ext}`, { type })
+    }),
+  )
+
+  const result = await openai.images.edit({
     model: 'gpt-image-1',
+    image: refs,
     prompt,
     size: '1024x1536',
     quality: 'medium',
@@ -413,13 +435,15 @@ export function buildScenePrompt(brand: any, operation: any): string {
   const tone = brand.brand_tone || 'professionnel'
   const scheme = toneScheme(tone, colors)
   const subject = operation?.description || operation?.name || `produit représentant la marque ${brand.brand_name || brand.name}`
-  return `Visuel branded complet pour document A4 portrait. Sujet à mettre en scène : ${subject}. Marque : ${brand.brand_name || brand.name}, secteur ${brand.brand_sector || 'générique'}, ton ${tone}.
+  return `Visuel branded complet pour document A4 portrait. Marque : ${brand.brand_name || brand.name}, secteur ${brand.brand_sector || 'générique'}, ton ${tone}. Contexte de l'opération : ${subject}.
 
-STAGING : ${scheme.staging}. Le sujet/produit doit occuper UNIQUEMENT la moitié BASSE de l'image (les 50% inférieurs), mis en valeur.
+SUJET — CRITIQUE : la/les image(s) fournie(s) en référence montrent le produit/service RÉEL à mettre en scène. Tu dois reproduire ce produit FIDÈLEMENT (forme, proportions, couleurs réelles, matière, texture, détails distinctifs visibles sur la référence). Ne pas inventer un autre produit, ne pas styliser, ne pas en changer la couleur. Si plusieurs références sont fournies, fusionne-les comme différents angles d'un même produit.
 
-PALETTE EXCLUSIVE : ${palette} (utilise uniquement ces couleurs et leurs nuances, aucune autre).
+STAGING : ${scheme.staging}. Le produit doit occuper UNIQUEMENT la moitié BASSE de l'image (les 50% inférieurs), mis en valeur dans cette mise en scène.
 
-ZONE TEXTE — CRITIQUE : la moitié HAUTE de l'image (les 50% supérieurs) doit être une zone CALME, UNIFORME OU TRÈS DOUCEMENT DÉGRADÉE, ${scheme.zoneDesc}. AUCUN détail complexe, AUCUN objet, AUCUN sujet, AUCUN contraste fort dans cette zone — c'est là que du texte sera incrusté par-dessus. Le contraste entre la zone calme du haut et le sujet en bas doit être net mais harmonieux.
+PALETTE DE LA SCÈNE (décor, fond, lumière, accessoires) : ${palette} (utilise uniquement ces couleurs et leurs nuances pour l'environnement). Le produit lui-même conserve ses couleurs réelles vues sur la référence.
+
+ZONE TEXTE — CRITIQUE : la moitié HAUTE de l'image (les 50% supérieurs) doit être une zone CALME, UNIFORME OU TRÈS DOUCEMENT DÉGRADÉE, ${scheme.zoneDesc}. AUCUN détail complexe, AUCUN objet, AUCUN sujet, AUCUN contraste fort dans cette zone — c'est là que du texte sera incrusté par-dessus. Le contraste entre la zone calme du haut et le produit en bas doit être net mais harmonieux.
 
 CONTRAINTES STRICTES : aucun texte dans l'image, aucun logo, aucun caractère, aucun chiffre, aucune signature. Photo/rendu réaliste de qualité éditoriale.`
 }

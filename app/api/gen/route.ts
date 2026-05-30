@@ -47,7 +47,14 @@ export async function POST(req: Request) {
     // Image obligatoire : si la génération échoue, on annule AVANT le débit de crédits.
     let sceneUrl: string | null = operation?.background_image_url || null
     if (operation && !sceneUrl) {
-      sceneUrl = await generateSceneImage(buildScenePrompt(contact, operation), userId, operation.id)
+      const refs: string[] = Array.isArray(operation.images) ? operation.images.filter(Boolean) : []
+      if (refs.length === 0) {
+        return NextResponse.json(
+          { error: 'missing_product_image', message: "Ajoute au moins une photo du produit/service à l'opération avant de générer (gpt-image-1 a besoin d'une référence visuelle)." },
+          { status: 400 },
+        )
+      }
+      sceneUrl = await generateSceneImage(buildScenePrompt(contact, operation), refs, userId, operation.id)
       await supabaseAdmin
         .from('operations')
         .update({ background_image_url: sceneUrl })

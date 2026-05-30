@@ -51,7 +51,14 @@ export async function POST(req: Request) {
     // Régen : nouvelle scène obligatoire. Si échec, on annule avant débit.
     let sceneUrl: string | null = operation?.background_image_url || null
     if (operation) {
-      sceneUrl = await generateSceneImage(buildScenePrompt(contact, operation), userId, operation.id)
+      const refs: string[] = Array.isArray(operation.images) ? operation.images.filter(Boolean) : []
+      if (refs.length === 0) {
+        return NextResponse.json(
+          { error: 'missing_product_image', message: "Ajoute au moins une photo du produit/service à l'opération avant de régénérer." },
+          { status: 400 },
+        )
+      }
+      sceneUrl = await generateSceneImage(buildScenePrompt(contact, operation), refs, userId, operation.id)
       await supabaseAdmin
         .from('operations')
         .update({ background_image_url: sceneUrl })
