@@ -30,6 +30,7 @@ export default function ContactPage() {
   const [dealText, setDealText] = useState<string>('')
   const [genError, setGenError] = useState<string | null>(null)
   const [forceSceneRefresh, setForceSceneRefresh] = useState<boolean>(false)
+  const [quality, setQuality] = useState<'medium' | 'high'>('medium')
 
   const loadOperations = async () => {
     const { data } = await supabase.from('operations').select('*').eq('contact_id', id).order('created_at', { ascending: false })
@@ -290,9 +291,11 @@ export default function ContactPage() {
     })
   }
 
-  const generationCost = selectedTypes.size * PER_DOC_COST
+  const perDocCost = quality === 'high' ? 4 : PER_DOC_COST
+  const generationCost = selectedTypes.size * perDocCost
   const needsDealText = selectedTypes.has('forfait')
   const dealMissing = needsDealText && !dealText.trim()
+  const highLocked = plan === 'starter'
 
   const handleGenerate = async () => {
     setGenError(null)
@@ -316,6 +319,7 @@ export default function ContactPage() {
           types: Array.from(selectedTypes),
           dealText: needsDealText ? dealText.trim() : null,
           forceSceneRefresh,
+          quality,
         }),
       })
       const data = await res.json()
@@ -732,7 +736,51 @@ export default function ContactPage() {
                       </div>
                     )}
 
-                    <label style={{display:'flex',alignItems:'center',gap:8,marginTop:14,padding:'8px 10px',background:'#070F22',border:'1px solid #0F2040',borderRadius:10,cursor:'pointer',fontSize:13,color:'#6B84AA',fontStyle:'italic'}}>
+                    <div style={{marginTop:14,padding:'12px 14px',background:'#070F22',border:`1px solid ${quality === 'high' ? '#7C3AED' : '#0F2040'}`,borderRadius:10,transition:'border-color .15s'}}>
+                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,marginBottom:highLocked ? 8 : 6}}>
+                        <div>
+                          <div style={{fontSize:13,color:'#F0F4FF',fontWeight:600,marginBottom:2}}>
+                            Qualité de l'image scène
+                          </div>
+                          <div style={{fontSize:11,color:'#4A6280',fontStyle:'italic'}}>
+                            Premium = rendu nettement plus détaillé (gpt-image-1 high)
+                          </div>
+                        </div>
+                        <div style={{display:'inline-flex',background:'#050B18',border:'1px solid #0F2040',borderRadius:9,padding:3,gap:0}}>
+                          <button
+                            type="button"
+                            onClick={() => setQuality('medium')}
+                            style={{
+                              background: quality === 'medium' ? 'linear-gradient(135deg,#4F8EF7,#7C3AED)' : 'transparent',
+                              color: quality === 'medium' ? '#fff' : '#6B84AA',
+                              border:'none',padding:'6px 12px',borderRadius:6,fontSize:12,fontFamily:"'Cormorant Garamond',serif",fontStyle:'italic',cursor:'pointer',transition:'all .15s',
+                            }}
+                          >Standard · 2 c/doc</button>
+                          <button
+                            type="button"
+                            onClick={() => { if (!highLocked) setQuality('high') }}
+                            disabled={highLocked}
+                            title={highLocked ? 'Réservé aux plans payants — clique pour voir' : ''}
+                            style={{
+                              background: quality === 'high' ? 'linear-gradient(135deg,#4F8EF7,#7C3AED)' : 'transparent',
+                              color: quality === 'high' ? '#fff' : (highLocked ? '#1E3050' : '#6B84AA'),
+                              border:'none',padding:'6px 12px',borderRadius:6,fontSize:12,fontFamily:"'Cormorant Garamond',serif",fontStyle:'italic',cursor: highLocked ? 'not-allowed' : 'pointer',transition:'all .15s',
+                            }}
+                          >Premium · 4 c/doc {highLocked && '🔒'}</button>
+                        </div>
+                      </div>
+                      {highLocked && (
+                        <div style={{fontSize:12,color:'#A8C8FC',fontStyle:'italic',marginTop:8,padding:'8px 10px',background:'#0D1B35',border:'1px solid #1E3A5F',borderRadius:8,display:'flex',justifyContent:'space-between',alignItems:'center',gap:10}}>
+                          <span>La qualité premium est réservée aux plans payants.</span>
+                          <a
+                            onClick={() => window.location.href = '/pricing'}
+                            style={{color:'#F0F4FF',cursor:'pointer',textDecoration:'underline',whiteSpace:'nowrap'}}
+                          >Passer sur Solo →</a>
+                        </div>
+                      )}
+                    </div>
+
+                    <label style={{display:'flex',alignItems:'center',gap:8,marginTop:10,padding:'8px 10px',background:'#070F22',border:'1px solid #0F2040',borderRadius:10,cursor:'pointer',fontSize:13,color:'#6B84AA',fontStyle:'italic'}}>
                       <input
                         type="checkbox"
                         checked={forceSceneRefresh}
@@ -764,8 +812,8 @@ export default function ContactPage() {
                 <p className="cost-hint">
                   {selectedOpId
                     ? selectedTypes.size > 0
-                      ? <>Coût : <strong style={{color:'#A8C8FC'}}>{generationCost} crédits</strong> ({selectedTypes.size} × {PER_DOC_COST}) {typeof credits === 'number' && <>· solde {credits}</>}</>
-                      : <>Coût : 2 crédits par document. Coche au moins 1 document pour pouvoir générer.</>
+                      ? <>Coût : <strong style={{color:'#A8C8FC'}}>{generationCost} crédits</strong> ({selectedTypes.size} × {perDocCost}{quality === 'high' && ' premium'}) {typeof credits === 'number' && <>· solde {credits}</>}</>
+                      : <>Coût : {perDocCost} crédits par document{quality === 'high' && ' (premium)'}. Coche au moins 1 document pour pouvoir générer.</>
                     : <>Cliquez une opération dans la barre latérale pour pouvoir générer.</>}
                 </p>
               </div>

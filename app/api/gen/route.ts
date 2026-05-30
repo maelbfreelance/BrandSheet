@@ -15,12 +15,17 @@ import {
   buildScenePrompt,
   generateSceneImage,
   sanitizeBody,
+  type SceneQuality,
 } from '@/lib/doc-render'
 
 const NOUVEAUTE_TYPES = new Set(['nouveaute'])
+/** Qualité 'high' : facturée 4 crédits / doc au lieu de 2, et réservée aux
+ *  plans payants (cf. /pricing → marges calculées). */
+const HIGH_QUALITY_COST = 4
 
 export async function POST(req: Request) {
-  const { contactId, operationId, types, dealText, forceSceneRefresh } = await req.json()
+  const { contactId, operationId, types, dealText, forceSceneRefresh, quality: rawQuality } = await req.json()
+  const quality: SceneQuality = rawQuality === 'high' ? 'high' : 'medium'
 
   if (!contactId) {
     return NextResponse.json({ error: 'contactId requis' }, { status: 400 })
@@ -62,12 +67,23 @@ export async function POST(req: Request) {
       )
     }
 
+    // Gating qualité 'high' : réservée aux plans payants. Le Starter reçoit
+    // un message explicite + lien /pricing pour upgrader.
+    if (quality === 'high' && plan === 'starter') {
+      return NextResponse.json(
+        { error: 'plan_required', message: "La qualité premium est réservée aux plans payants. Passe sur Solo pour activer la qualité premium." },
+        { status: 403 },
+      )
+    }
+
     // Vérif crédits AVANT toute action (scène image + appels IA).
-    const cost = validTypes.length * PER_DOC_COST
+    // Tarification : 2 crédits / doc en medium, 4 crédits / doc en high.
+    const perDoc = quality === 'high' ? HIGH_QUALITY_COST : PER_DOC_COST
+    const cost = validTypes.length * perDoc
     const credits = await getCredits(userId)
     if (credits < cost) {
       return NextResponse.json(
-        { error: 'insufficient_credits', message: `Il vous reste ${credits} crédits. Cette génération en coûte ${cost} (${validTypes.length} × ${PER_DOC_COST}).`, credits, required: cost },
+        { error: 'insufficient_credits', message: `Il vous reste ${credits} crédits. Cette génération en coûte ${cost} (${validTypes.length} × ${perDoc}).`, credits, required: cost },
         { status: 402 },
       )
     }
@@ -79,10 +95,13 @@ export async function POST(req: Request) {
     }
 
     // Scène image : nécessaire pour tous les types SAUF nouveaute. Cachée sur l'opération.
-    // forceSceneRefresh=true ignore le cache et regénère une image fraîche
-    // (utile si la consigne d'opération a été retravaillée après un 1er rendu décevant).
+    // - forceSceneRefresh=true → ignore le cache
+    // - cached_quality='medium' mais requested='high' → on regénère (montée en gamme)
+    // - cached_quality='high' et requested='medium' → on réutilise (downgrade inoffensif)
     const needsScene = validTypes.some((t) => !NOUVEAUTE_TYPES.has(t))
-    let sceneUrl: string | null = forceSceneRefresh ? null : (operation?.background_image_url || null)
+    const cachedQuality: SceneQuality = operation?.background_image_quality === 'high' ? 'high' : 'medium'
+    const qualityUpgrade = quality === 'high' && cachedQuality !== 'high'
+    let sceneUrl: string | null = (forceSceneRefresh || qualityUpgrade) ? null : (operation?.background_image_url || null)
     if (needsScene && operation && !sceneUrl) {
       const refs: string[] = Array.isArray(operation.images) ? operation.images.filter(Boolean) : []
       if (refs.length === 0) {
@@ -91,10 +110,10 @@ export async function POST(req: Request) {
           { status: 400 },
         )
       }
-      sceneUrl = await generateSceneImage(buildScenePrompt(contact, operation), refs, userId, operation.id)
+      sceneUrl = await generateSceneImage(buildScenePrompt(contact, operation), refs, userId, operation.id, quality)
       await supabaseAdmin
         .from('operations')
-        .update({ background_image_url: sceneUrl })
+        .update({ background_image_url: sceneUrl, background_image_quality: quality })
         .eq('id', operation.id)
     }
 

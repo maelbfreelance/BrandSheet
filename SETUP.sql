@@ -174,6 +174,10 @@ create table if not exists operations (
 alter table operations add column if not exists hero_image_url text;
 -- Image scène (produit mis en scène + zone calme pour le texte overlay)
 alter table operations add column if not exists background_image_url text;
+-- Qualité utilisée pour générer l'image scène cachée ('medium' | 'high').
+-- Permet de réutiliser le cache uniquement si la qualité demandée n'est pas
+-- supérieure à celle déjà générée (sinon on regénère en montée en gamme).
+alter table operations add column if not exists background_image_quality text;
 -- Description du forfait/deal saisie par l'user pour la fiche 'forfait'
 alter table operations add column if not exists deal_text text;
 

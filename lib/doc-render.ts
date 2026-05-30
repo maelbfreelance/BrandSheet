@@ -489,11 +489,14 @@ async function uploadImage(buffer: Buffer, userId: string, opId: string): Promis
   return pub.publicUrl
 }
 
+export type SceneQuality = 'medium' | 'high'
+
 export async function generateSceneImage(
   prompt: string,
   refImageUrls: string[],
   userId: string,
   opId: string,
+  quality: SceneQuality = 'medium',
 ): Promise<string> {
   if (!refImageUrls || refImageUrls.length === 0) {
     throw new Error("Aucune image de référence : ajoute au moins une photo du produit/service à l'opération")
@@ -516,7 +519,7 @@ export async function generateSceneImage(
     image: refs,
     prompt,
     size: '1024x1536',
-    quality: 'medium',
+    quality,
     n: 1,
   })
   const b64 = result.data?.[0]?.b64_json
