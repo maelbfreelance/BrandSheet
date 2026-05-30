@@ -15,17 +15,45 @@ export default function Dashboard() {
   const [plan, setPlan] = useState<PlanId>('starter')
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) window.location.href = '/login'
-      else {
-        setUser(data.user)
-        loadContacts(data.user.id)
-        loadCredits(data.user.id)
-        supabase.from('profiles').select('plan').eq('user_id', data.user.id).maybeSingle().then(({ data: p }) => {
-          if (p?.plan && p.plan in PLANS) setPlan(p.plan as PlanId)
-        })
+    let mounted = true
+    let kicked = false
+
+    const onLoggedIn = (uid: string, authUser: any) => {
+      if (!mounted) return
+      setUser(authUser)
+      loadContacts(uid)
+      loadCredits(uid)
+      supabase.from('profiles').select('plan').eq('user_id', uid).maybeSingle().then(({ data: p }) => {
+        if (mounted && p?.plan && p.plan in PLANS) setPlan(p.plan as PlanId)
+      })
+    }
+
+    // 1) getSession() lit le localStorage sync : pas de round-trip réseau, donc
+    //    pas de race avec l'exchange du code OAuth qui vient juste d'écrire la
+    //    session. Si pas de session, on attend brièvement onAuthStateChange
+    //    avant de kicker (le client supabase peut être en train d'exchanger
+    //    un ?code= présent dans l'URL).
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return
+      if (data.session?.user) {
+        onLoggedIn(data.session.user.id, data.session.user)
+      } else {
+        // Laisser une fenêtre au client pour détecter la session post-OAuth.
+        setTimeout(() => {
+          if (!mounted || kicked || user) return
+          kicked = true
+          window.location.href = '/login'
+        }, 1200)
       }
     })
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return
+      if (session?.user) onLoggedIn(session.user.id, session.user)
+    })
+
+    return () => { mounted = false; sub.subscription.unsubscribe() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadContacts = async (userId: string) => {
