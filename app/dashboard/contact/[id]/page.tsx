@@ -11,6 +11,8 @@ export default function ContactPage() {
   const [brand, setBrand] = useState<any>(null)
   const [docs, setDocs] = useState<any[]>([])
   const [showReanalyzeConfirm, setShowReanalyzeConfirm] = useState(false)
+  const [showConsent, setShowConsent] = useState(false)
+  const [consentChecked, setConsentChecked] = useState(false)
   const [showMoreData, setShowMoreData] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [generated, setGenerated] = useState(false)
@@ -281,6 +283,13 @@ export default function ContactPage() {
   }
 
   const handleAnalyzeClick = () => {
+    setConsentChecked(false)
+    setShowConsent(true)
+  }
+
+  const handleConsentConfirm = () => {
+    if (!consentChecked) return
+    setShowConsent(false)
     if (brand) {
       setShowReanalyzeConfirm(true)
     } else {
@@ -664,7 +673,7 @@ export default function ContactPage() {
               <div style={{textAlign:'center',maxWidth:420}}>
                 <h2 className="main-panel-h" style={{color:'#F7954F'}}>Analyse impossible</h2>
                 <p className="main-panel-p" style={{wordBreak:'break-word'}}>{analyzeError}</p>
-                <button className="analyze-btn" onClick={handleAnalyze}>↻ Réessayer</button>
+                <button className="analyze-btn" onClick={handleAnalyzeClick}>↻ Réessayer</button>
               </div>
             ) : brand ? (
               <div className="brand-result">
@@ -881,7 +890,7 @@ export default function ContactPage() {
               <>
                 <h2 className="main-panel-h">Analysez le branding</h2>
                 <p className="main-panel-p">L'IA va analyser le site de votre client et extraire sa palette, ses polices et son identité.</p>
-                <button className="analyze-btn" onClick={handleAnalyze}>✦ Lancer l'analyse →</button>
+                <button className="analyze-btn" onClick={handleAnalyzeClick}>✦ Lancer l'analyse →</button>
               </>
             )}
           </div>
@@ -1073,6 +1082,43 @@ export default function ContactPage() {
               >
                 Supprimer définitivement
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showConsent && (
+        <div className="modal-overlay" onClick={() => setShowConsent(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{maxWidth:560,textAlign:'left'}}>
+            <h2 className="modal-h" style={{textAlign:'left'}}>Avant de lancer l&apos;analyse</h2>
+            <p style={{fontSize:14,color:'var(--text-mid)',fontStyle:'italic',lineHeight:1.7,padding:'14px 16px',background:'var(--bg-deep)',border:'1px solid var(--decor-subtle)',borderLeft:'3px solid #4F8EF7',borderRadius:10,margin:'8px 0 18px'}}>
+              L&apos;outil BrandSheet accède exclusivement à des informations publiques et librement accessibles sur le web (logos, couleurs, polices). L&apos;utilisateur est seul responsable de l&apos;usage qu&apos;il fait des documents générés et s&apos;engage à respecter le droit des marques de ses prospects.
+            </p>
+            <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'14px 0 8px',cursor:'pointer',fontSize:15,color:'var(--text-strong)',fontStyle:'italic',lineHeight:1.5}}>
+              <input
+                type="checkbox"
+                checked={consentChecked}
+                onChange={(e) => setConsentChecked(e.target.checked)}
+                style={{width:16,height:16,cursor:'pointer',marginTop:3,flexShrink:0}}
+              />
+              <span>Je déclare disposer de l&apos;autorisation d&apos;extraire les données publiques du site de mon client.</span>
+            </label>
+            <p style={{fontSize:13,color:'var(--text-muted)',fontStyle:'italic',marginBottom:18}}>
+              En cochant, j&apos;accepte les <a href="/cgu" target="_blank" rel="noopener noreferrer" style={{color:'var(--link-soft)',textDecoration:'underline'}}>Conditions Générales d&apos;Utilisation</a>.
+            </p>
+            <div className="modal-actions">
+              <button className="modal-cancel" onClick={() => setShowConsent(false)}>Annuler</button>
+              <button
+                onClick={handleConsentConfirm}
+                disabled={!consentChecked}
+                style={{
+                  background: consentChecked ? 'linear-gradient(135deg,#4F8EF7,#7C3AED)' : 'var(--text-faint)',
+                  color:'#fff',
+                  cursor: consentChecked ? 'pointer' : 'not-allowed',
+                  padding:'11px 24px',borderRadius:8,
+                  fontFamily:"'Cormorant Garamond',serif",fontSize:15,fontStyle:'italic',border:'none',
+                }}
+              >Continuer →</button>
             </div>
           </div>
         </div>
