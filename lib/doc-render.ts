@@ -13,6 +13,7 @@ export const DOC_TYPE_LABELS: Record<string, string> = {
   // Mails actifs (réservés aux plans payants)
   mail_remerciement: 'Mail remerciement',
   mail_marketing: 'Mail marketing',
+  mail_prospection: 'Mail prospection',
   // Labels conservés pour que les anciens documents s'affichent proprement dans
   // l'historique. Les prompts associés ont été retirés : régénérer un de ces
   // anciens docs est désormais impossible (acceptable, ce sont des archives).
@@ -31,11 +32,12 @@ export const ACTIVE_DOC_TYPES = [
   'forfait',
   'mail_remerciement',
   'mail_marketing',
+  'mail_prospection',
 ] as const
 export type ActiveDocType = (typeof ACTIVE_DOC_TYPES)[number]
 
 /** Mails : gated aux plans payants, layout overlay court, intégration Gmail. */
-export const MAIL_DOC_TYPES = new Set<string>(['mail_remerciement', 'mail_marketing'])
+export const MAIL_DOC_TYPES = new Set<string>(['mail_remerciement', 'mail_marketing', 'mail_prospection'])
 
 /** Docs avec bloc 5 étoiles toujours visible. */
 const FIVE_STARS_DOCS = new Set<string>(['remerciement', 'mail_remerciement'])
@@ -55,7 +57,7 @@ export type AccountType = 'freelance' | 'brand'
 // Mails courts → image en pleine page, texte par-dessus.
 // Fiches → image en bandeau hero + corps en section propre lisible.
 // Nouveauté → layout dédié (image produit centrée XL + mot "NOUVEAUTÉ").
-const OVERLAY_DOCS = new Set(['mail_remerciement', 'mail_marketing'])
+const OVERLAY_DOCS = new Set(['mail_remerciement', 'mail_marketing', 'mail_prospection'])
 const NOUVEAUTE_DOCS = new Set(['nouveaute'])
 
 export function escapeHtml(s: string): string {
@@ -739,6 +741,15 @@ export function buildDocPrompts(
 
       mail_remerciement: `Rédige un mail de remerciement post-achat ENVOYÉ PAR LA MARQUE ${b.brand_name || b.name} à un client. ${mailContract} Un bloc 5 étoiles visuel sera ajouté automatiquement à la fin, invite poliment à laisser une note sans l'afficher en texte. ${brandInfo}. Contexte: ${o}. 100 mots max. Ton ${b.brand_tone}.`,
       mail_marketing: `Rédige un mail marketing PAR la marque ${b.brand_name || b.name}, personnalisé, qui s'appuie SUR LE CONTEXTE (produit, public, ambiance). ${mailContract} Accroche dès la 1ère phrase, présente le bénéfice clair, finis par un appel à l'action net. ${brandInfo}. Contexte: ${o}. 130 mots max. Ton ${b.brand_tone}.`,
+      mail_prospection: buildProspectionPrompt({
+        senderName: b.brand_name || b.name,
+        prospectName: b.brand_name || b.name,
+        senderInfo: brandInfo,
+        contextInfo: o,
+        tone: b.brand_tone,
+        mailContract,
+        mode: 'brand',
+      }),
     }
   }
 
@@ -787,7 +798,104 @@ Le texte que tu produis DOIT parler de cette mission et uniquement de cette miss
 
     mail_remerciement: `Rédige un MAIL de remerciement envoyé PAR ${freelanceName} À ${clientBrandName} après la mission. ${mailContract} Esprit "merci de votre confiance" sur la mission décrite. Un bloc 5 étoiles visuel sera ajouté automatiquement à la fin, invite poliment à laisser un retour sans l'afficher en texte. ${voiceContract} ${missionInfo} 100 mots max. ${toneAlignment}`,
     mail_marketing: `Rédige un MAIL adressé PAR ${freelanceName} À ${clientBrandName}, qui s'appuie sur la mission/contexte décrite ci-dessous pour proposer une suite ou un service complémentaire. ${mailContract} Accroche dès la 1ère phrase, mets en avant la valeur que le freelance peut apporter à ${clientBrandName}, finis par un appel à l'action net (ex: rdv, devis). ${voiceContract} ${missionInfo} 130 mots max. ${toneAlignment}`,
+    mail_prospection: buildProspectionPrompt({
+      senderName: freelanceName,
+      prospectName: clientBrandName,
+      senderInfo: issuerInfo,
+      contextInfo: missionText || missionName || '',
+      tone: b.brand_tone,
+      mailContract,
+      mode: 'freelance',
+      brandSector: b.brand_sector,
+      brandDescription: b.brand_description,
+      brandValues: Array.isArray(b.brand_values) ? b.brand_values.join(', ') : '',
+    }),
   }
+}
+
+/**
+ * Mail de prospection à froid — suit les règles de vente "perfect cold email" :
+ * 80/20 (parler du prospect, pas de soi), objet ultra-court, accroche-compliment
+ * sincère basée sur le scrape, "claque visuelle" (le mail est lui-même la preuve
+ * — image brandée scène en en-tête, couleurs du prospect), bénéfice chiffré, CTA
+ * faible friction. Le mail est conçu pour être collé dans Gmail via le flux
+ * existant (openInGmail) : l'image scène générée pour cette opération sert de
+ * "claque visuelle" en haut du mail, dans la palette du prospect.
+ */
+function buildProspectionPrompt(opts: {
+  senderName: string
+  prospectName: string
+  senderInfo: string
+  contextInfo: string
+  tone: string | undefined
+  mailContract: string
+  mode: 'freelance' | 'brand'
+  brandSector?: string
+  brandDescription?: string
+  brandValues?: string
+}): string {
+  const { senderName, prospectName, senderInfo, contextInfo, tone, mailContract, mode, brandSector, brandDescription, brandValues } = opts
+  const prospectIntel = [
+    brandSector && `Secteur : ${brandSector}`,
+    brandDescription && `Description : ${brandDescription}`,
+    brandValues && `Valeurs affichées : ${brandValues}`,
+  ].filter(Boolean).join(' | ') || '(aucune info scrapée précise — reste générique mais sincère sur ce que toute personne visitant leur site pourrait remarquer : identité graphique propre, positionnement clair, etc.)'
+
+  const offer = mode === 'freelance'
+    ? `Ton offre / proposition de valeur (à n'amener qu'en fin de mail, max 20% du texte) : ${contextInfo || 'prestation de services personnalisée (sois sobre, ne détaille pas si tu n\'as pas l\'info)'}`
+    : `Offre proposée par ${senderName} (à n'amener qu'en fin de mail, max 20% du texte) : ${contextInfo || 'collaboration B2B'}`
+
+  return `Rédige un MAIL DE PROSPECTION À FROID envoyé PAR ${senderName} À ${prospectName} (prospect, pas encore client). C'est un cold email de vente premium. ${mailContract}
+
+RÈGLES FONDAMENTALES — À RESPECTER ABSOLUMENT :
+
+1) RÈGLE DU 80 / 20 — Parle d'EUX, pas de toi.
+   - 80% du mail doit parler de ${prospectName} : leur entreprise, leurs forces, leur identité, un truc remarquable chez eux.
+   - 20% maximum (à la toute fin) montre comment ${senderName} peut leur apporter de la valeur.
+   - INTERDIT de commencer par "Bonjour, je suis ${senderName}, mon outil fait ceci..." — c'est la POUBELLE garantie. Le prospect s'en fout de qui tu es au début, il veut savoir ce que tu lui apportes.
+
+2) OBJET — Ultra-court, mystérieux ou ultra-personnalisé.
+   - L'objet ne vend pas, il fait OUVRIR. <h2>Objet : XXX</h2> en première ligne.
+   - À ÉVITER absolument : "Proposition commerciale", "Nos services pour vous", tout ce qui sonne spam.
+   - À UTILISER : "Question sur ${prospectName}" / "Idée pour ${prospectName}" / "Votre identité + une idée" / "${prospectName} — petite idée" / un truc court (≤ 6 mots) qui éveille la curiosité.
+
+3) ACCROCHE — Compliment sincère qui prouve que tu as VRAIMENT regardé leur site.
+   - Première phrase du corps : un compliment précis et crédible sur ${prospectName}, basé sur leur identité visuelle, leur ton, leur secteur, leur positionnement. Pas de flatterie creuse. Du genre : "J'ai vu votre site et l'identité graphique de ${prospectName} est vraiment propre" / "Votre positionnement sur [secteur] sort vraiment du lot".
+   - Ça doit montrer dès la 1ère ligne que ce n'est PAS un robot, c'est quelqu'un qui a pris 2 minutes pour les regarder.
+
+4) CLAQUE VISUELLE — Annonce ce qui se passe en haut du mail.
+   - L'image en haut du mail est une scène brandée générée AUX COULEURS de ${prospectName}. C'est ta preuve immédiate : tu ne dis pas "je peux faire", tu MONTRES.
+   - Un <p> court qui pointe vers cette claque visuelle. Du genre : "Pour vous faire gagner du temps, j'ai pris la liberté de générer ci-dessus un exemple de [document pro / template] entièrement configuré aux couleurs et à l'ambiance de ${prospectName}." Adapte au contexte de l'offre.
+
+5) BÉNÉFICE CHIFFRÉ — Le ROI, pas la feature.
+   - Un <p> qui explique POURQUOI cette approche a de la valeur pour LEUR business — avec un chiffre concret.
+   - Exemples du genre : "des documents aussi personnalisés permettent de justifier des tarifs ~20% plus élevés" / "de signer 2x plus vite" / "de renvoyer une image premium qui convertit mieux". Reste crédible — pas de chiffre absurde.
+
+6) CTA FAIBLE FRICTION — Surtout pas un call de 45 minutes.
+   - INTERDIT : "Dispo pour un call jeudi 14h ?" — trop engageant pour un 1er contact.
+   - UTILISE une question fermée à faible engagement : "Est-ce que ça fait sens pour vous que je vous envoie le document complet en PDF ?" / "Si l'approche vous plaît, ça vaut le coup qu'on en parle 5 minutes ?" / "Je vous envoie la version complète si ça vous intéresse ?"
+   - Pas plus d'UN appel à l'action, en toute dernière ligne.
+
+INFO SUR LE PROSPECT ${prospectName} (à exploiter pour l'accroche, sans l'imprimer brut) : ${prospectIntel}
+
+INFO ÉMETTEUR ${senderName} : ${senderInfo}
+
+${offer}
+
+TON : aligne-toi sur un registre ${tone || 'professionnel chaleureux'} — pas corporate guindé, pas familier non plus. Phrases courtes, rythme. Tutoiement INTERDIT par défaut (vouvoiement de respect pour un 1er contact à froid).
+
+LONGUEUR : 120 à 160 mots MAX dans le corps (hors objet). Plus court = mieux lu. Pas de paragraphe-bloc — alterne <p> courts.
+
+STRUCTURE HTML attendue dans l'ordre :
+<h2>Objet : …</h2>
+<p>Bonjour [si possible mets {{prénom}} comme placeholder, sinon "Bonjour,"],</p>
+<p>[Accroche compliment sincère sur ${prospectName} — 1 à 2 phrases]</p>
+<p>[Claque visuelle — pointe vers l'image en haut du mail aux couleurs de ${prospectName}]</p>
+<p>[Bénéfice chiffré pour LEUR business]</p>
+<p>[CTA faible friction — UNE seule question fermée]</p>
+<p>[Signature courte : ${senderName}]</p>
+
+INTERDICTIONS : pas de "J'espère que vous allez bien", pas de "dans le cadre de", pas de "n'hésitez pas à", pas de "au plaisir de vous lire" — tous ces clichés tuent l'ouverture. Pas de listes à puces. Pas de promesse vague type "je peux vous aider à grandir".`
 }
 
 export function sanitizeBody(text: string): string {

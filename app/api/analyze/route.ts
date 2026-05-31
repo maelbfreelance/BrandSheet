@@ -158,8 +158,8 @@ Réponds UNIQUEMENT en JSON valide, sans backticks, sans texte avant ou après :
     }).eq('id', contactId)
 
     // Facturation post-analyse : 1ère analyse gratuite à vie, puis débit
-    // selon le plan. Marquer free_scrape_used même pour Agency (scrapeCost=0)
-    // pour rester cohérent si l'utilisateur rétrograde.
+    // selon le plan (5 crédits sur tous les plans). Le scraping gratuit est
+    // unique à vie — un abonnement ne le réinitialise pas.
     let remainingCredits: number | null = null
     if (!freeUsed) {
       await supabaseAdmin

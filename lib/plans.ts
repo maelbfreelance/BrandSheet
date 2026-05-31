@@ -23,7 +23,8 @@ export type PlanInfo = {
   creditsPerMonth: number
   generationCost: number
   modifCost: number | null
-  /** Coût d'une analyse/scraping APRÈS le 1er scraping gratuit. 0 = inclus. */
+  /** Coût d'une analyse/scraping APRÈS le 1er scraping gratuit à vie.
+   *  Le scraping gratuit est UNIQUE à vie : un abonnement ne le réinitialise pas. */
   scrapeCost: number
   retention: { kind: 'count' | 'days' | 'unlimited'; value: number }
   retentionLabel: string
@@ -93,7 +94,7 @@ export const PLANS: Record<PlanId, PlanInfo> = {
     features: [
       '2 contacts à vie',
       '20 crédits offerts à l\'inscription, puis 10 / mois (cumul possible, mois sans login perdus)',
-      '1 analyse de marque gratuite, puis 5 crédits / analyse',
+      '1 analyse de marque gratuite à vie (non renouvelée par un abonnement), puis 5 crédits / analyse',
       'Génération HTML brandée',
       'Conservation : 5 documents par contact (FIFO)',
     ],
@@ -113,13 +114,13 @@ export const PLANS: Record<PlanId, PlanInfo> = {
     creditsPerMonth: 100,
     generationCost: 10,
     modifCost: 2,
-    scrapeCost: 3,
+    scrapeCost: 5,
     retention: { kind: 'count', value: 15 },
     retentionLabel: '15 documents par contact',
     features: [
       '10 contacts',
       '100 crédits / mois (cumul possible)',
-      'Analyse de marque : 3 crédits',
+      'Analyse de marque : 5 crédits (1ʳᵉ offerte à vie, non renouvelée par l\'abonnement)',
       'Régénération de documents (2 crédits)',
       'CGV générées',
       'Devis professionnels',
@@ -141,14 +142,14 @@ export const PLANS: Record<PlanId, PlanInfo> = {
     creditsPerMonth: 300,
     generationCost: 10,
     modifCost: 2,
-    scrapeCost: 2,
+    scrapeCost: 5,
     retention: { kind: 'count', value: 50 },
     retentionLabel: '50 documents par contact',
     popular: true,
     features: [
       '25 contacts',
       '300 crédits / mois (cumul possible)',
-      'Analyse de marque : 2 crédits',
+      'Analyse de marque : 5 crédits (1ʳᵉ offerte à vie, non renouvelée par l\'abonnement)',
       'Régénération de documents (2 crédits)',
       'Conservation : 50 documents par contact (FIFO)',
       'Toutes les fonctionnalités Solo',
@@ -170,13 +171,13 @@ export const PLANS: Record<PlanId, PlanInfo> = {
     creditsPerMonth: 1000,
     generationCost: 10,
     modifCost: 2,
-    scrapeCost: 0,
+    scrapeCost: 5,
     retention: { kind: 'unlimited', value: 0 },
     retentionLabel: 'documents illimités',
     features: [
       'Contacts illimités',
       '1 000 crédits / mois (cumul possible)',
-      'Analyse de marque illimitée et gratuite',
+      'Analyse de marque : 5 crédits (1ʳᵉ offerte à vie, non renouvelée par l\'abonnement)',
       'Régénération de documents (2 crédits)',
       'Conservation illimitée des documents',
       'Toutes les fonctionnalités Studio',

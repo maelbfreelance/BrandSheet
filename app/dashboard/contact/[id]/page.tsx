@@ -87,6 +87,7 @@ export default function ContactPage() {
     // Mails (plans payants)
     mail_remerciement: 'Mail remerciement',
     mail_marketing: 'Mail marketing',
+    mail_prospection: 'Mail prospection',
     // Legacy
     bienvenue: 'Mail bienvenue',
     avis: 'Demande avis',
@@ -103,6 +104,7 @@ export default function ContactPage() {
     { id: 'forfait', label: 'Forfait', hint: 'Décris ton offre, l’IA la met en page' },
     { id: 'mail_remerciement', label: 'Mail remerciement', hint: 'Envoi via Gmail · 5 étoiles', mail: true },
     { id: 'mail_marketing', label: 'Mail marketing', hint: 'Reprend le contexte de l’opération', mail: true },
+    { id: 'mail_prospection', label: 'Mail prospection', hint: 'Cold email vente (règle 80/20, claque visuelle, CTA faible friction)', mail: true },
   ]
   const PER_DOC_COST = 4
 
