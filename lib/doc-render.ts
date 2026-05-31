@@ -743,12 +743,15 @@ export function buildDocPrompts(
       mail_marketing: `Rédige un mail marketing PAR la marque ${b.brand_name || b.name}, personnalisé, qui s'appuie SUR LE CONTEXTE (produit, public, ambiance). ${mailContract} Accroche dès la 1ère phrase, présente le bénéfice clair, finis par un appel à l'action net. ${brandInfo}. Contexte: ${o}. 130 mots max. Ton ${b.brand_tone}.`,
       mail_prospection: buildProspectionPrompt({
         senderName: b.brand_name || b.name,
-        prospectName: b.brand_name || b.name,
+        prospectName: '',
         senderInfo: brandInfo,
         contextInfo: o,
         tone: b.brand_tone,
         mailContract,
         mode: 'brand',
+        brandSector: b.brand_sector,
+        brandDescription: b.brand_description,
+        brandValues: Array.isArray(b.brand_values) ? b.brand_values.join(', ') : '',
       }),
     }
   }
@@ -835,6 +838,51 @@ function buildProspectionPrompt(opts: {
   brandValues?: string
 }): string {
   const { senderName, prospectName, senderInfo, contextInfo, tone, mailContract, mode, brandSector, brandDescription, brandValues } = opts
+
+  // ===== MODE BRAND : la marque écrit à un prospect inconnu (B2C/B2B) =====
+  // Pas de règle 80/20 (la marque ne connaît pas le prospect — elle ne peut
+  // pas le complimenter sincèrement). À la place : la marque parle en SON
+  // propre nom, présente clairement la nouveauté/l'offre décrite dans le
+  // contexte, et invite à l'action. L'image en haut du mail sert de hero
+  // produit, pas de "claque visuelle" personnalisée au prospect.
+  if (mode === 'brand') {
+    const brandIntel = [
+      brandSector && `Secteur : ${brandSector}`,
+      brandDescription && `Description : ${brandDescription}`,
+      brandValues && `Valeurs : ${brandValues}`,
+    ].filter(Boolean).join(' | ')
+    return `Rédige un MAIL DE PROSPECTION envoyé PAR la marque ${senderName} À un prospect (futur client de ${senderName}, encore inconnu — pas de nom, pas de personnalisation individuelle). ${mailContract}
+
+VOIX : c'est ${senderName} qui s'exprime en son nom propre (1re personne du pluriel "nous", style marque). INTERDIT de te faire passer pour un outil tiers, pour BrandSheet, ou pour un freelance. Tu ES ${senderName}, point. Signe à la fin par ${senderName}.
+
+OBJECTIF : faire découvrir au destinataire l'offre / la nouveauté décrite ci-dessous, et l'inciter à passer à l'action (découvrir, essayer, acheter, en savoir plus).
+
+CONTEXTE DE LA MARQUE ${senderName} (à incarner, pas à réciter) : ${brandIntel || senderInfo}
+
+OFFRE / NOUVEAUTÉ À PRÉSENTER (sujet central du mail — décrite par ${senderName}) : ${contextInfo || 'offre générale de la marque'}
+
+RÈGLES DE RÉDACTION :
+1) OBJET ultra-court (≤ 6 mots), donne envie d'ouvrir sans sonner spam. <h2>Objet : XXX</h2> en première ligne. À ÉVITER : "Offre exceptionnelle", "Ne ratez pas", "Promo". À UTILISER : une accroche curieuse ou un bénéfice concret lié à la nouveauté.
+2) ACCROCHE (1re phrase du corps) : pose le sujet immédiatement — pourquoi ce mail arrive aujourd'hui. Ex : "On vient de lancer [nouveauté]" / "Une nouvelle [cure / produit] vient d'arriver chez nous". Pas de "J'espère que vous allez bien", pas de blabla.
+3) BÉNÉFICE clair : un <p> qui explique CE QUE ÇA APPORTE au destinataire (pas la feature, le résultat ressenti). Reste dans le ton ${tone || 'de la marque'} — pas guindé, pas familier.
+4) PREUVE VISUELLE : l'image en haut du mail est un visuel brandé aux couleurs de ${senderName}. Un <p> court qui y fait référence naturellement (ex : "Le visuel ci-dessus donne le ton."). Ne le force pas si ça ne colle pas au contexte.
+5) CTA UNIQUE en dernière ligne, faible friction : "Découvrir →" / "En savoir plus" / "Profiter de l'offre" — UN seul appel à l'action.
+
+LONGUEUR : 90 à 140 mots dans le corps (hors objet). Phrases courtes, rythme. Alterne <p> courts. Vouvoiement par défaut sauf si le ton ${tone || 'de la marque'} appelle clairement le tutoiement (ex : marque jeune/lifestyle).
+
+STRUCTURE HTML attendue dans l'ordre :
+<h2>Objet : …</h2>
+<p>Bonjour,</p>
+<p>[Accroche — annonce directe de la nouveauté / l'offre, au nom de ${senderName}]</p>
+<p>[Bénéfice concret pour le destinataire]</p>
+<p>[Référence légère au visuel ci-dessus, si pertinent]</p>
+<p>[CTA unique — UNE seule action proposée]</p>
+<p>L'équipe ${senderName}</p>
+
+INTERDICTIONS : pas de "n'hésitez pas à", pas de "dans le cadre de", pas de "au plaisir de vous lire", pas de listes à puces, pas de promesse vague. Pas de personnalisation fictive du destinataire (pas de "votre entreprise", pas de "votre identité graphique" — tu ne connais PAS le destinataire). Pas de mention d'un outil tiers, pas de "BrandSheet", pas de "généré pour vous".`
+  }
+
+  // ===== MODE FREELANCE : cold email B2B classique vers la marque cliente =====
   const prospectIntel = [
     brandSector && `Secteur : ${brandSector}`,
     brandDescription && `Description : ${brandDescription}`,
