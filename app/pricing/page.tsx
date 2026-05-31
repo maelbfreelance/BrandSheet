@@ -250,7 +250,6 @@ export default function PricingPage() {
         </p>
       </div>
 
-      <footer className="footer">© 2025 BrandSheet · CGU · Mentions légales · Contact</footer>
     </>
   )
 }

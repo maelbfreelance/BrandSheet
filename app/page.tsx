@@ -329,12 +329,6 @@ export default function Home() {
         <p className="bs-hint">Gratuit · Sans CB · 2 contacts à vie</p>
       </div>
 
-      <footer className="bs-footer">
-        <div className="bs-logo" style={{fontSize:'16px'}}>BrandSheet</div>
-        <div className="bs-footer-copy">
-          © 2026 BrandSheet · <a href="/cgu" style={{color:'inherit',textDecoration:'underline'}}>CGU</a> · <a href="/cgu" style={{color:'inherit',textDecoration:'underline'}}>Mentions légales</a> · <a href="mailto:maelbfreelance@gmail.com" style={{color:'inherit',textDecoration:'underline'}}>Contact</a>
-        </div>
-      </footer>
     </>
   )
 }
